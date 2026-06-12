@@ -1,0 +1,90 @@
+/*
+Theme Name:  EDIS
+Theme URI:   https://github.com/emilyspringerton/EDIS
+Description: Minimal starter theme for the EDIS financial intelligence site.
+Version:     0.1.0
+Author:      EINHORN INDUSTRIAL
+License:     MIT
+*/
+
+/* ── Reset + base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #f8fafc;
+  color: #1a202c;
+  margin: 0;
+  line-height: 1.6;
+}
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.site-wrap   { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+.site-header { background: #0f172a; color: #f1f5f9; padding: 1rem 0; }
+.site-header .site-wrap { display: flex; align-items: center; justify-content: space-between; }
+.site-title  { font-size: 1.25rem; font-weight: 700; color: #f1f5f9; letter-spacing: 0.04em; }
+.site-title a { color: inherit; }
+.site-nav a  { color: #94a3b8; margin-left: 1.5rem; font-size: 0.9rem; }
+.site-nav a:hover { color: #f1f5f9; text-decoration: none; }
+
+.site-main { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; padding: 2rem 0; }
+@media (max-width: 768px) { .site-main { grid-template-columns: 1fr; } }
+
+.content { min-width: 0; }
+.sidebar {}
+
+.site-footer { background: #0f172a; color: #64748b; text-align: center; padding: 1.5rem 0; font-size: 0.85rem; margin-top: 3rem; }
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+.card__ticker { font-weight: 700; font-size: 1.1rem; color: #0f172a; }
+.card__meta   { font-size: 0.8rem; color: #64748b; margin: 0.25rem 0; }
+.card__preview { font-size: 0.9rem; color: #475569; margin: 0.5rem 0 0; }
+
+/* ── EDIS Signals plugin styles ──────────────────────────────────────────── */
+.edis-signals__list { list-style: none; margin: 0; padding: 0; }
+.edis-signals__item { border-left: 3px solid #e2e8f0; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
+.edis-signals__item--high   { border-color: #dc2626; }
+.edis-signals__item--medium { border-color: #f59e0b; }
+.edis-signals__item--low    { border-color: #94a3b8; }
+.edis-signals__type  { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #64748b; margin-right: 0.5rem; }
+.edis-signals__date  { font-size: 0.75rem; color: #94a3b8; margin-right: 0.5rem; }
+.edis-signals__score { font-size: 0.75rem; font-weight: 700; color: #2563eb; }
+.edis-signals__headline { font-size: 0.85rem; color: #374151; margin: 0.25rem 0 0; }
+
+.edis-entity__auditor, .edis-entity__score { font-size: 0.9rem; margin: 0.25rem 0; }
+.edis-entity__directors { list-style: none; padding: 0; font-size: 0.85rem; }
+.edis-entity__flag { display: inline-block; background: #fef3c7; color: #92400e; font-size: 0.7rem; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+
+.edis-eps__table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.edis-eps__table th, .edis-eps__table td { padding: 0.4rem 0.6rem; text-align: right; border-bottom: 1px solid #e2e8f0; }
+.edis-eps__table th:first-child, .edis-eps__table td:first-child { text-align: left; }
+.edis-eps__row--beat td:last-child { color: #16a34a; font-weight: 600; }
+.edis-eps__row--miss td:last-child { color: #dc2626; font-weight: 600; }
+
+/* ── Ask Emily plugin styles ─────────────────────────────────────────────── */
+.edis-ask { font-size: 0.9rem; }
+.edis-ask__form { display: flex; flex-direction: column; gap: 0.5rem; }
+.edis-ask__ticker, .edis-ask__question {
+  border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem 0.75rem;
+  font-size: 0.9rem; font-family: inherit; width: 100%;
+}
+.edis-ask__question { resize: vertical; min-height: 80px; }
+.edis-ask__submit {
+  background: #2563eb; color: #fff; border: none; border-radius: 6px;
+  padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  align-self: flex-start;
+}
+.edis-ask__submit:disabled { background: #93c5fd; cursor: not-allowed; }
+.edis-ask__limit-note { font-size: 0.75rem; color: #9ca3af; }
+.edis-ask__answer { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem; }
+.edis-ask__answer-text { margin: 0; color: #14532d; font-size: 0.9rem; line-height: 1.6; }
+.edis-ask__error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 0.6rem 0.75rem; margin-top: 0.5rem; color: #991b1b; font-size: 0.85rem; }
+
+.edis-error { color: #991b1b; font-size: 0.85rem; }
+.edis-empty { color: #64748b; font-size: 0.85rem; font-style: italic; }
+
+/* ── Sidebar widget headings ─────────────────────────────────────────────── */
+.widget-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin: 0 0 0.75rem; }
