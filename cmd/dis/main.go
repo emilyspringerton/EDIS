@@ -1,0 +1,241 @@
+// cmd/dis/main.go — EDIS Digital Immune System collector daemon.
+// Tails nginx access logs, maintains ring buffer + health state,
+// exposes /dis/health (JSON) and /dis/posture (metrics) on localhost.
+//
+// Usage: dis --log /var/log/nginx/access.log --addr :9099
+//
+// The WordPress edis-dis plugin reads from :9099/dis/health to select ad mode
+// and surface posture state in the admin panel.
+
+package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/emilyspringerton/edis/internal/dis"
+)
+
+var (
+	flagLog  = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
+	flagAddr = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
+	flagStdin = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
+)
+
+func main() {
+	flag.Parse()
+
+	ring := &dis.Ring{}
+	posture := dis.NewPosture()
+
+	// Start log tailer in background
+	go func() {
+		if *flagStdin {
+			tailReader(os.Stdin, ring, posture)
+		} else {
+			tailFile(*flagLog, ring, posture)
+		}
+	}()
+
+	// Expose health endpoints
+	mux := http.NewServeMux()
+	mux.HandleFunc("/dis/health", handleHealth(posture))
+	mux.HandleFunc("/dis/posture", handlePosture(posture))
+	mux.HandleFunc("/dis/admode", handleAdMode(posture))
+
+	log.Printf("dis collector listening on %s (tailing %s)", *flagAddr, *flagLog)
+	if err := http.ListenAndServe(*flagAddr, mux); err != nil {
+		log.Fatalf("dis: listen: %v", err)
+	}
+}
+
+// tailFile opens f and tails it line by line, re-opening if the file rotates.
+func tailFile(path string, ring *dis.Ring, p *dis.Posture) {
+	for {
+		f, err := os.Open(path)
+		if err != nil {
+			log.Printf("dis: open %s: %v (retry in 5s)", path, err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		// Seek to end — we only want new lines
+		f.Seek(0, io.SeekEnd)
+		tailReader(f, ring, p)
+		f.Close()
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// tailReader reads log lines from r until EOF or error, parsing each line.
+func tailReader(r io.Reader, ring *dis.Ring, p *dis.Posture) {
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		line := sc.Text()
+		rec, ok := parseNginxCombined(line)
+		if !ok {
+			continue
+		}
+		ring.Push(rec)
+		p.IngestRaw(rec)
+	}
+}
+
+// parseNginxCombined parses the nginx "combined" log format:
+// $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
+//
+// After SplitN(line, " ", 9):
+//   [0]=IP [1]=- [2]=user [3]=[date [4]=tz] [5]="METHOD [6]=/path [7]=HTTP/V" [8]=status bytes ...
+func parseNginxCombined(line string) (dis.Record, bool) {
+	parts := strings.SplitN(line, " ", 9)
+	if len(parts) < 9 {
+		return dis.Record{}, false
+	}
+
+	// Status and bytes are the first two space-separated tokens of parts[8].
+	tail := strings.SplitN(parts[8], " ", 3)
+	if len(tail) < 2 {
+		return dis.Record{}, false
+	}
+	status, err := strconv.ParseUint(tail[0], 10, 16)
+	if err != nil {
+		return dis.Record{}, false
+	}
+	respBytes, _ := strconv.ParseUint(tail[1], 10, 32)
+
+	// Parse the actual request timestamp from the log line so inter-request
+	// delta scoring is not poisoned by batch-read timing.
+	// parts[3]="[02/Jan/2006:15:04:05"  parts[4]="-0700]"
+	tsNs := time.Now().UnixNano()
+	tsRaw := strings.TrimPrefix(parts[3], "[") + " " + strings.TrimSuffix(parts[4], "]")
+	if t, err := time.Parse("02/Jan/2006:15:04:05 -0700", tsRaw); err == nil {
+		tsNs = t.UnixNano()
+	}
+
+	rec := dis.Record{
+		TsNs:      tsNs,
+		Status:    uint16(status),
+		RespBytes: uint32(respBytes),
+	}
+
+	// Method from parts[5]: "\"GET" → "GET"
+	rec.Method = encodeMethod(strings.TrimPrefix(parts[5], "\""))
+
+	// Basic UA-based threat scoring from the log (header-order scoring requires
+	// live request; this covers the most common automated scanner signatures).
+	if len(tail) == 3 {
+		rec.Score = scoreFromLogTail(tail[2], rec.Method)
+	}
+
+	return rec, true
+}
+
+// scoreFromLogTail derives a partial threat score from the referer+UA portion of
+// the log line (tail[2] after stripping status+bytes).  Not as precise as full
+// fingerprinting via Harvester middleware, but catches the most common scanners.
+func scoreFromLogTail(rest string, method uint8) uint8 {
+	// Extract user-agent: last quoted field in `"-" "UA"`
+	ua := ""
+	if i := strings.LastIndex(rest, "\""); i > 0 {
+		if j := strings.LastIndex(rest[:i], "\""); j >= 0 {
+			ua = strings.ToLower(rest[j+1 : i])
+		}
+	}
+
+	var score int
+	// Known scanner/bot UA substrings
+	for _, sig := range []string{"zgrab", "masscan", "nmap", "sqlmap", "nikto", "nuclei", "python-requests", "go-http-client", "curl/", "wget/"} {
+		if strings.Contains(ua, sig) {
+			score += 30
+			break
+		}
+	}
+	// GET-only signal: collector tracks per-record; posture engine aggregates
+	if method == 0 { // GET
+		score += 5
+	}
+	if score > 100 {
+		return 100
+	}
+	return uint8(score)
+}
+
+func encodeMethod(m string) uint8 {
+	switch strings.ToUpper(m) {
+	case "GET":
+		return 0
+	case "POST":
+		return 1
+	case "PUT":
+		return 2
+	case "DELETE":
+		return 3
+	case "HEAD":
+		return 4
+	default:
+		return 5
+	}
+}
+
+type healthResponse struct {
+	State   string `json:"state"`
+	AdMode  string `json:"ad_mode"`
+	Updated string `json:"updated"`
+}
+
+func handleHealth(p *dis.Posture) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		state := p.State()
+		resp := healthResponse{
+			State:   state.String(),
+			AdMode:  dis.SelectAdMode(state).String(),
+			Updated: time.Now().UTC().Format(time.RFC3339),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	}
+}
+
+type postureResponse struct {
+	State       string  `json:"state"`
+	HostileRatio float64 `json:"hostile_ratio"`
+	AdMode      string  `json:"ad_mode"`
+	AdDesc      string  `json:"ad_mode_description"`
+}
+
+func handlePosture(p *dis.Posture) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		state := p.State()
+		mode := dis.SelectAdMode(state)
+		resp := postureResponse{
+			State:        state.String(),
+			HostileRatio: p.HostileRatio(),
+			AdMode:       mode.String(),
+			AdDesc:       dis.AdModeDescription(mode),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, "%s\n", mustJSON(resp))
+	}
+}
+
+func handleAdMode(p *dis.Posture) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mode := dis.SelectAdMode(p.State())
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, mode.String())
+	}
+}
+
+func mustJSON(v any) []byte {
+	b, _ := json.Marshal(v)
+	return b
+}
