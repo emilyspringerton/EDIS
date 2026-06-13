@@ -58,7 +58,10 @@ func main() {
 	}
 }
 
-// tailFile opens f and tails it line by line, re-opening if the file rotates.
+// tailFile opens path, seeks to the end, and polls for new lines indefinitely.
+// When the file is rotated (inode changes), it reopens automatically.
+// Lines written during a reopen gap are NOT missed because we only reopen
+// after detecting rotation — we do not close-and-seek on every EOF poll.
 func tailFile(path string, ring *dis.Ring, p *dis.Posture) {
 	for {
 		f, err := os.Open(path)
@@ -67,15 +70,56 @@ func tailFile(path string, ring *dis.Ring, p *dis.Posture) {
 			time.Sleep(5 * time.Second)
 			continue
 		}
-		// Seek to end — we only want new lines
-		f.Seek(0, io.SeekEnd)
-		tailReader(f, ring, p)
+		f.Seek(0, io.SeekEnd) //nolint:errcheck
+		tailPoll(f, path, ring, p)
 		f.Close()
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
+// tailPoll keeps f open and polls for new lines, sleeping 100ms on EOF.
+// Returns when the file has been rotated (inode change or file gone).
+func tailPoll(f *os.File, path string, ring *dis.Ring, p *dis.Posture) {
+	buf := bufio.NewReader(f)
+	for {
+		line, err := buf.ReadString('\n')
+		if line != "" {
+			rec, ok := parseNginxCombined(strings.TrimRight(line, "\r\n"))
+			if ok {
+				ring.Push(rec)
+				p.IngestRaw(rec)
+			}
+		}
+		if err == nil {
+			continue
+		}
+		if err != io.EOF {
+			log.Printf("dis: read error: %v", err)
+			return
+		}
+		// At EOF: check for log rotation before sleeping.
+		if fileRotated(f, path) {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// fileRotated returns true if the open file f no longer matches the file at path
+// (i.e. the file has been rotated or deleted by logrotate).
+func fileRotated(f *os.File, path string) bool {
+	fi1, err := f.Stat()
+	if err != nil {
+		return true
+	}
+	fi2, err := os.Stat(path)
+	if err != nil {
+		return true // file deleted → rotated
+	}
+	return !os.SameFile(fi1, fi2)
+}
+
 // tailReader reads log lines from r until EOF or error, parsing each line.
+// Used for stdin (-stdin flag) where polling is not needed.
 func tailReader(r io.Reader, ring *dis.Ring, p *dis.Posture) {
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {

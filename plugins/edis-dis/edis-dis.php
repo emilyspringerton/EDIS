@@ -108,7 +108,6 @@ function edis_dis_ad_shortcode( array $atts ): string {
 
     switch ( $mode ) {
         case 'svg':
-        case 'svg':
             if ( $atts['src'] ) {
                 return sprintf(
                     '<div class="edis-ad edis-ad--svg" data-slot="%s"><a href="%s" rel="nofollow"><img src="%s" loading="lazy" alt="Advertisement" /></a></div>',
