@@ -1,6 +1,9 @@
 # EDIS Changelog
 
 ## 2026-06-13
+- feat(ops): ops/install.sh — single-shot idempotent deploy script; installs nginx+PHP8.3-FPM+certbot+WP-CLI, creates MySQL edis DB, downloads+installs WordPress, rsyncs EDIS plugins+theme, configures nginx HTTP bootstrap (ACME-ready), starts services with smoke-test; creds persisted to /root/.edis-deploy-creds; follow-up with ops/certbot/setup.sh once DNS propagates
+
+
 - feat(edis-earnings): earnings calendar plugin — [edis_earnings_calendar] shortcode + EDIS_Earnings_Widget; calls signalapi /v1/earnings-calendar with ticker/days/limit attrs; calendar-table.php template groups by report_date with today/tomorrow labels, BMO/AMC timing, confidence badges (confirmed/announced/approx); edis-earnings.css
 - feat(edis-signals): press releases — [edis_press_releases ticker="AAPL" limit="10"] shortcode; calls signalapi /v1/press-releases/{ticker}; press-releases-list.php renders date, linked title (first line of body), 240-char snippet; edis-signals.css added
 - feat(ticker-page): Corporate Signals section — limit raised to 15, ordered by source_published_at DESC (original source document date) via updated /v1/governance-signals endpoint; Press Releases section added above Ask Emily
