@@ -62,3 +62,20 @@ function edis_get_entity( string $ticker ): array|WP_Error {
 function edis_get_eps( string $ticker, int $periods = 8 ): array|WP_Error {
     return EDIS_Core_Cache::remember( "eps/{$ticker}/{$periods}", fn() => edis_api()->get_eps( $ticker, $periods ), 300 );
 }
+
+/**
+ * Fetch upcoming earnings calendar, cached for 5 minutes.
+ *
+ * @param string $ticker Comma-separated tickers or '' for all
+ * @param string $to     YYYY-MM-DD upper bound or '' for none
+ * @param int    $limit  Max results
+ */
+function edis_get_earnings_calendar( string $ticker = '', string $to = '', int $limit = 50 ): array|WP_Error {
+    $key = "earncal/{$ticker}/{$to}/{$limit}";
+    return EDIS_Core_Cache::remember( $key, fn() => edis_api()->get_earnings_calendar( $ticker, '', $to, $limit ), 300 );
+}
+
+function edis_get_press_releases( string $ticker, int $limit = 20 ): array|WP_Error {
+    $key = "press/{$ticker}/{$limit}";
+    return EDIS_Core_Cache::remember( $key, fn() => edis_api()->get_press_releases( $ticker, $limit ), 120 );
+}

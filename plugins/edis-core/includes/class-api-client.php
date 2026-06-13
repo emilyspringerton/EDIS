@@ -71,6 +71,46 @@ class EDIS_Core_API_Client {
         return $this->get( '/v1/eps/' . strtoupper( $ticker ), [ 'periods' => $periods ] );
     }
 
+    /**
+     * Fetch upcoming earnings dates.
+     *
+     * @param string $ticker  Optional comma-separated tickers (e.g. "AAPL,MSFT"), empty = all
+     * @param string $from    YYYY-MM-DD start date (empty = today)
+     * @param string $to      YYYY-MM-DD end date (empty = no upper bound)
+     * @param int    $limit   Max results (default 50)
+     * @return array|WP_Error  { count: int, calendar: EarningsDate[] }
+     */
+    public function get_earnings_calendar( string $ticker = '', string $from = '', string $to = '', int $limit = 50 ) {
+        if ( empty( $this->signalapi_url ) ) {
+            return new WP_Error( 'edis_not_configured', '[EDIS] signalapi URL not set' );
+        }
+        $args = [ 'upcoming' => '1', 'limit' => $limit ];
+        if ( $ticker !== '' ) {
+            $args['ticker'] = strtoupper( $ticker );
+        }
+        if ( $from !== '' ) {
+            $args['from'] = $from;
+        }
+        if ( $to !== '' ) {
+            $args['to'] = $to;
+        }
+        return $this->get( '/v1/earnings-calendar', $args );
+    }
+
+    /**
+     * Fetch press releases for a ticker.
+     *
+     * @param string $ticker  e.g. "AAPL"
+     * @param int    $limit   max results (default 20)
+     * @return array|WP_Error  { ticker: string, count: int, press_releases: PressRelease[] }
+     */
+    public function get_press_releases( string $ticker, int $limit = 20 ) {
+        if ( empty( $this->signalapi_url ) ) {
+            return new WP_Error( 'edis_not_configured', '[EDIS] signalapi URL not set' );
+        }
+        return $this->get( '/v1/press-releases/' . strtoupper( $ticker ), [ 'limit' => $limit ] );
+    }
+
     // ── Emily Prime ───────────────────────────────────────────────────────────
 
     /**

@@ -22,14 +22,17 @@ if ( ! $ticker && get_the_ID() ) {
         <h1 style="font-size:1.75rem;font-weight:800;margin-bottom:0.25rem"><?php echo esc_html( $ticker ); ?></h1>
         <p style="color:#64748b;font-size:0.85rem;margin-top:0">Governance intelligence · Updated from FatBaby pipeline</p>
 
-        <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">Recent Signals</h2>
-        <?php echo do_shortcode( '[edis_signals ticker="' . esc_attr( $ticker ) . '" limit="10"]' ); ?>
+        <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">Corporate Signals</h2>
+        <?php echo do_shortcode( '[edis_signals ticker="' . esc_attr( $ticker ) . '" limit="15"]' ); ?>
 
         <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">Board &amp; Governance</h2>
         <?php echo do_shortcode( '[edis_entity ticker="' . esc_attr( $ticker ) . '"]' ); ?>
 
         <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">EPS History</h2>
         <?php echo do_shortcode( '[edis_eps ticker="' . esc_attr( $ticker ) . '" periods="8"]' ); ?>
+
+        <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">Press Releases</h2>
+        <?php echo do_shortcode( '[edis_press_releases ticker="' . esc_attr( $ticker ) . '" limit="10"]' ); ?>
 
         <h2 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.5rem">Ask Emily about <?php echo esc_html( $ticker ); ?></h2>
         <?php echo do_shortcode( '[ask_emily ticker="' . esc_attr( $ticker ) . '"]' ); ?>

@@ -1,0 +1,152 @@
+/* EDIS Earnings Calendar — edis-earnings.css */
+
+.edis-earnings {
+    overflow-x: auto;
+    margin: 1.25rem 0;
+}
+
+.edis-earnings__empty {
+    color: #666;
+    font-style: italic;
+}
+
+/* ── Table ─────────────────────────────────────────────────────────────────── */
+
+.edis-earnings__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.edis-earnings__table th,
+.edis-earnings__table td {
+    text-align: left;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: top;
+}
+
+.edis-earnings__table thead th {
+    background: #f9fafb;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+/* ── Date cell (rowspanned) ─────────────────────────────────────────────────── */
+
+.edis-earnings__date {
+    white-space: nowrap;
+    vertical-align: top;
+    padding-top: 0.55rem;
+}
+
+.edis-earnings__date-label {
+    display: block;
+    font-weight: 600;
+    color: #111827;
+}
+
+.edis-earnings__date-label--today {
+    color: #2563eb;
+}
+
+.edis-earnings__date-sub {
+    display: block;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* ── Today row highlight ─────────────────────────────────────────────────────── */
+
+.edis-earnings__row--today td {
+    background: #eff6ff;
+}
+
+/* ── Ticker ──────────────────────────────────────────────────────────────────── */
+
+.edis-earnings__ticker {
+    font-weight: 700;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+/* ── Company name ────────────────────────────────────────────────────────────── */
+
+.edis-earnings__issuer {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #374151;
+}
+
+/* ── Period ──────────────────────────────────────────────────────────────────── */
+
+.edis-earnings__period {
+    white-space: nowrap;
+    color: #374151;
+}
+
+/* ── Timing (BMO / AMC) ──────────────────────────────────────────────────────── */
+
+.edis-earnings__timing {
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.edis-earnings__timing--bmo { color: #0284c7; }
+.edis-earnings__timing--amc { color: #7c3aed; }
+.edis-earnings__timing--unknown { color: #9ca3af; }
+
+/* ── Status badge ────────────────────────────────────────────────────────────── */
+
+.edis-earnings__badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.edis-earnings__badge--confirmed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.edis-earnings__badge--announced {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.edis-earnings__badge--backfilled {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.edis-earnings__badge--unknown {
+    background: #f9fafb;
+    color: #9ca3af;
+}
+
+/* ── Footer note ─────────────────────────────────────────────────────────────── */
+
+.edis-earnings__foot {
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    color: #9ca3af;
+}
+
+/* ── Column widths ───────────────────────────────────────────────────────────── */
+
+.edis-earnings__col-date    { width: 110px; }
+.edis-earnings__col-ticker  { width: 70px; }
+.edis-earnings__col-period  { width: 80px; }
+.edis-earnings__col-timing  { width: 60px; }
+.edis-earnings__col-status  { width: 100px; }

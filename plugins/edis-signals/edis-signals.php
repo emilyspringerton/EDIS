@@ -22,6 +22,10 @@ register_activation_hook( __FILE__, function () {
     }
 } );
 
+add_action( 'wp_enqueue_scripts', function () {
+    wp_enqueue_style( 'edis-signals', EDIS_SIGNALS_URL . 'edis-signals.css', [], '0.1.0' );
+} );
+
 // ── Shortcodes ────────────────────────────────────────────────────────────────
 
 add_shortcode( 'edis_signals', 'edis_signals_shortcode' );
@@ -79,6 +83,24 @@ function edis_eps_shortcode( array $atts ): string {
     }
     ob_start();
     include EDIS_SIGNALS_DIR . 'templates/eps-table.php';
+    return ob_get_clean();
+}
+
+add_shortcode( 'edis_press_releases', 'edis_press_releases_shortcode' );
+function edis_press_releases_shortcode( array $atts ): string {
+    $atts   = shortcode_atts( [ 'ticker' => '', 'limit' => '10' ], $atts );
+    $ticker = strtoupper( sanitize_text_field( $atts['ticker'] ) );
+    $limit  = max( 1, min( 50, (int) $atts['limit'] ) );
+    if ( empty( $ticker ) ) {
+        return '<p class="edis-error">edis_press_releases: ticker attribute required.</p>';
+    }
+    $data = edis_get_press_releases( $ticker, $limit );
+    if ( is_wp_error( $data ) ) {
+        return '<p class="edis-error">' . esc_html( $data->get_error_message() ) . '</p>';
+    }
+    $press_releases = isset( $data['press_releases'] ) ? (array) $data['press_releases'] : [];
+    ob_start();
+    include EDIS_SIGNALS_DIR . 'templates/press-releases-list.php';
     return ob_get_clean();
 }
 
