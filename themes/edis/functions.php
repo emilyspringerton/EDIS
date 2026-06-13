@@ -40,3 +40,44 @@ add_filter( 'query_vars', function ( $vars ) {
 add_action( 'after_switch_theme', function () {
     flush_rewrite_rules();
 } );
+
+// S23-03: Route /ticker/{SYM} virtual pages to page-ticker.php template.
+add_filter( 'template_include', function ( string $template ): string {
+    if ( get_query_var( 'edis_ticker' ) ) {
+        $ticker_tmpl = locate_template( 'page-ticker.php' );
+        if ( $ticker_tmpl ) {
+            return $ticker_tmpl;
+        }
+    }
+    return $template;
+} );
+
+// S23-02: OpenGraph meta for ticker pages and editorial posts.
+add_action( 'wp_head', function (): void {
+    $ticker = strtoupper( get_query_var( 'edis_ticker', '' ) );
+
+    if ( $ticker ) {
+        // Ticker virtual page.
+        $title = esc_attr( $ticker . ' Governance Intelligence — FatBaby' );
+        $desc  = esc_attr( 'Governance signals, director data, and EPS history for ' . $ticker . '. Powered by FatBaby.' );
+        $url   = esc_url( home_url( '/ticker/' . strtolower( $ticker ) ) );
+        printf( '<meta property="og:type" content="article" />' . "\n" );
+        printf( '<meta property="og:title" content="%s" />' . "\n", $title );
+        printf( '<meta property="og:description" content="%s" />' . "\n", $desc );
+        printf( '<meta property="og:url" content="%s" />' . "\n", $url );
+        printf( '<meta name="description" content="%s" />' . "\n", $desc );
+        printf( '<title>%s</title>' . "\n", $title );
+    } elseif ( is_singular() ) {
+        // Editorial post.
+        $title = esc_attr( get_the_title() . ' — FatBaby' );
+        $desc  = esc_attr( wp_strip_all_tags( get_the_excerpt() ) );
+        $url   = esc_url( get_permalink() );
+        printf( '<meta property="og:type" content="article" />' . "\n" );
+        printf( '<meta property="og:title" content="%s" />' . "\n", $title );
+        if ( $desc ) {
+            printf( '<meta property="og:description" content="%s" />' . "\n", $desc );
+            printf( '<meta name="description" content="%s" />' . "\n", $desc );
+        }
+        printf( '<meta property="og:url" content="%s" />' . "\n", $url );
+    }
+}, 5 ); // priority 5 so Yoast SEO (priority 1) can override if installed
