@@ -1,5 +1,8 @@
 # EDIS Changelog
 
+## 2026-06-14
+- feat(emily-plus): emily-plus-woocommerce.php — WooCommerce hook provisions cap.query.full in IDUNA on order completion; POST /wp-json/edis/v1/set-iduna-user stores IDUNA user_id in WC session + WP usermeta; order meta ties buyer to IDUNA user; EDIS-WOOCOMMERCE agent authenticates with subscriptions.admin; JWT transient cache (50 min); graceful fallback by email if session not set
+
 ## 2026-06-13
 - feat(ops): ops/install.sh — single-shot idempotent deploy script; installs nginx+PHP8.3-FPM+certbot+WP-CLI, creates MySQL edis DB, downloads+installs WordPress, rsyncs EDIS plugins+theme, configures nginx HTTP bootstrap (ACME-ready), starts services with smoke-test; creds persisted to /root/.edis-deploy-creds; follow-up with ops/certbot/setup.sh once DNS propagates
 
