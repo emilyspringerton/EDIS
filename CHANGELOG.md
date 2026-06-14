@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-06-14
+- feat(mailchimp): mailchimp-waitlist.php — replaces wp_options waitlist with Mailchimp API v3 PUT upsert; auto-detects data center from API key suffix; tag support; falls back to wp_options when not configured; admin settings fields for API key + list ID + tag; override registration at rest_api_init priority 20
 - feat(emily-plus): emily-plus-woocommerce.php — WooCommerce hook provisions cap.query.full in IDUNA on order completion; POST /wp-json/edis/v1/set-iduna-user stores IDUNA user_id in WC session + WP usermeta; order meta ties buyer to IDUNA user; EDIS-WOOCOMMERCE agent authenticates with subscriptions.admin; JWT transient cache (50 min); graceful fallback by email if session not set
 
 ## 2026-06-13
