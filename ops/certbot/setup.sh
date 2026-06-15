@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ops/certbot/setup.sh — obtain + install Let's Encrypt certificate for edis.fatbaby.io
+# ops/certbot/setup.sh — obtain + install Let's Encrypt certificate for iduna.farthq.com
 #
 # Run ONCE after DNS is pointing at this server and nginx is serving port 80.
 # Certbot rewrites ops/nginx/edis.conf in-place with the managed cert paths
@@ -7,7 +7,7 @@
 #
 # Requirements:
 #   - nginx running (systemctl start nginx)
-#   - DNS A record: edis.fatbaby.io → this server's public IP
+#   - DNS A record: iduna.farthq.com → this server's public IP
 #   - Port 80 open in firewall (UFW: ufw allow 80/tcp && ufw allow 443/tcp)
 #
 # Usage:
@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-DOMAIN="edis.fatbaby.io"
+DOMAIN="iduna.farthq.com"
 EMAIL="emilyspringerton@gmail.com"
 NGINX_CONF="/etc/nginx/sites-available/edis"
 WEBROOT="/var/www/html"

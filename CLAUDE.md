@@ -26,9 +26,10 @@ docs/
 ## Key env / wp-config constants
 
 ```php
-define('EDIS_SIGNALAPI_URL', 'https://api.fatbaby.io');   // no trailing slash
-define('EDIS_EMILY_URL',     'https://emily.fatbaby.io'); // Emily Prime :8086
-define('EDIS_CACHE_TTL',     60);                          // default transient TTL seconds
+define('EDIS_SIGNALAPI_URL',  'https://api.fatbaby.io');    // no trailing slash
+define('EDIS_EMILY_URL',      'https://emily.fatbaby.io');  // Emily Prime :8086
+define('EDIS_IDUNA_BASE_URL', 'http://127.0.0.1:8080');    // IDUNA backend (co-located; public at iduna.farthq.com/api/)
+define('EDIS_CACHE_TTL',      60);                           // default transient TTL seconds
 ```
 
 ## Stack

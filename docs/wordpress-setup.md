@@ -21,12 +21,13 @@ cd /var/www
 wp core download --path=edis
 wp config create --path=edis --dbname=edis --dbuser=edis --dbpass=CHANGE_ME \
     --extra-php <<EOF
-define('EDIS_SIGNALAPI_URL', 'https://api.fatbaby.io');
-define('EDIS_EMILY_URL',     'https://emily.fatbaby.io');
+define('EDIS_SIGNALAPI_URL',  'https://api.fatbaby.io');
+define('EDIS_EMILY_URL',      'https://emily.fatbaby.io');
+define('EDIS_IDUNA_BASE_URL', 'http://127.0.0.1:8080');   // IDUNA backend (co-located)
 define('EDIS_CACHE_TTL',     60);
 EOF
-wp core install --path=edis --url=https://edis.fatbaby.io \
-    --title="EDIS Financial Intelligence" \
+wp core install --path=edis --url=https://iduna.farthq.com \
+    --title="IDUNA Intelligence Platform" \
     --admin_user=admin --admin_email=emilyspringerton@gmail.com \
     --admin_password=CHANGE_ME
 ```
@@ -75,7 +76,8 @@ Visit Settings → EDIS in the admin. The Connection Test should show:
 
 If not, check `EDIS_SIGNALAPI_URL` in wp-config.php and confirm signalapi is running:
 ```bash
-curl https://api.fatbaby.io/healthz
+curl https://iduna.farthq.com/api/v1/health   # IDUNA backend via nginx proxy
+curl https://api.fatbaby.io/healthz            # FatBaby signalapi (separate service)
 ```
 
 ## 7. Add Ask Emily to Sidebar

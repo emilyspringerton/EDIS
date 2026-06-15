@@ -96,9 +96,10 @@ All connection settings live in `wp-config.php` (preferred) or WordPress admin:
 
 ```php
 // wp-config.php
-define('EDIS_SIGNALAPI_URL', 'https://api.fatbaby.io');
-define('EDIS_EMILY_URL',     'https://emily.fatbaby.io');
-define('EDIS_CACHE_TTL',     60);
+define('EDIS_SIGNALAPI_URL',  'https://api.fatbaby.io');
+define('EDIS_EMILY_URL',      'https://emily.fatbaby.io');
+define('EDIS_IDUNA_BASE_URL', 'http://127.0.0.1:8080');   // IDUNA backend (co-located on iduna.farthq.com)
+define('EDIS_CACHE_TTL',      60);
 ```
 
 Or via Settings → EDIS in WordPress admin (stored in `wp_options`).
