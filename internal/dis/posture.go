@@ -139,12 +139,15 @@ func (p *Posture) scoreRecord(r *http.Request) uint8 {
 }
 
 // recompute recalculates health state from the rolling window.
+// hostileN is swapped before totalN so that any goroutine racing across the
+// window boundary is counted in the total (denominator) but not in hostile
+// (numerator) — keeping the hostile_ratio conservative rather than inflated.
 func (p *Posture) recompute() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	total := p.totalN.Swap(0)
 	hostile := p.hostileN.Swap(0)
+	total := p.totalN.Swap(0)
 	p.resetAtNs.Store(time.Now().Add(windowDuration).UnixNano())
 
 	if total == 0 {

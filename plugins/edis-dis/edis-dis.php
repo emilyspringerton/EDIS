@@ -214,6 +214,7 @@ function edis_dis_admin_page(): void {
                 <tr><th>Health State</th><td><?php echo esc_html( $posture['state'] ?? 'unknown' ); ?></td></tr>
                 <tr><th>Ad Mode</th><td><?php echo esc_html( $posture['ad_mode'] ?? 'unknown' ); ?></td></tr>
                 <tr><th>Ad Mode Desc</th><td><?php echo esc_html( $posture['ad_mode_description'] ?? '' ); ?></td></tr>
+                <tr><th>Hostile Ratio</th><td><?php echo esc_html( number_format( (float) ( $posture['hostile_ratio'] ?? 0.0 ), 4 ) ); ?></td></tr>
             </tbody>
         </table>
         <?php else: ?>

@@ -1,6 +1,10 @@
 # EDIS Changelog
 
 ## 2026-06-16
+- fix(dis): rewrite parseNginxCombined to locate $request by its surrounding quotes instead of fixed space-index split; the old approach shifted all field indices when nginx logged "-" for malformed requests (no internal spaces), silently dropping all 400-class lines — exactly the scanner/bot traffic DIS most needs to score
+- fix(dis): swap hostileN before totalN in Posture.recompute() so goroutines racing the window boundary inflate the denominator rather than the numerator, keeping hostile_ratio conservative
+- feat(dis): add hostile_ratio to /dis/health JSON response; show hostile_ratio in WordPress admin posture panel
+- test(dis): add TestParseNginxCombined (8 cases incl. bad-request dash), TestScoreFromLogTail, TestPostureIngest_HostileRatio, TestPostureRecompute_StateEscalation, TestPostureRecompute_SwapOrder, TestPostureForceState, TestHealthStateString [task-1781616390102456285]
 - S30-04: /signals/ nginx proxy block in edis.conf → iduna.farthq.com/signals/ routes to signalapi :9091 with 60s GET cache
 
 - fix(ops): nginx/edis.conf — php8.1-fpm.sock corrected to php8.3-fpm.sock (matches install.sh PHP_VER=8.3)

@@ -136,16 +136,44 @@ func tailReader(r io.Reader, ring *dis.Ring, p *dis.Posture) {
 // parseNginxCombined parses the nginx "combined" log format:
 // $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
 //
-// After SplitN(line, " ", 9):
-//   [0]=IP [1]=- [2]=user [3]=[date [4]=tz] [5]="METHOD [6]=/path [7]=HTTP/V" [8]=status bytes ...
+// We locate the $request field by its surrounding double-quotes rather than
+// counting spaces. This is robust against variable-length request fields,
+// including the "-" nginx logs for bad/malformed requests (which previously
+// caused all 400-class lines to be silently dropped — the field indices
+// shifted by 2 when the request had no internal spaces).
 func parseNginxCombined(line string) (dis.Record, bool) {
-	parts := strings.SplitN(line, " ", 9)
-	if len(parts) < 9 {
+	// The first " in the line is always the opening of "$request" because
+	// $remote_addr, -, $remote_user, and [$time_local] never contain quotes.
+	reqOpen := strings.IndexByte(line, '"')
+	if reqOpen < 0 {
+		return dis.Record{}, false
+	}
+	reqClose := strings.IndexByte(line[reqOpen+1:], '"')
+	if reqClose < 0 {
+		return dis.Record{}, false
+	}
+	reqClose += reqOpen + 1 // absolute offset of closing "
+
+	request := line[reqOpen+1 : reqClose]
+
+	// Parse the prefix "IP - user [date tz]" using Fields (handles any spacing).
+	prefixFields := strings.Fields(line[:reqOpen])
+	if len(prefixFields) < 5 {
 		return dis.Record{}, false
 	}
 
-	// Status and bytes are the first two space-separated tokens of parts[8].
-	tail := strings.SplitN(parts[8], " ", 3)
+	// prefixFields[3]="[02/Jan/2006:15:04:05"  prefixFields[4]="-0700]"
+	tsNs := time.Now().UnixNano()
+	tsRaw := strings.TrimPrefix(prefixFields[3], "[") + " " + strings.TrimSuffix(prefixFields[4], "]")
+	if t, err := time.Parse("02/Jan/2006:15:04:05 -0700", tsRaw); err == nil {
+		tsNs = t.UnixNano()
+	}
+
+	// Suffix is everything after the closing " — skip the single space separator.
+	if reqClose+1 >= len(line) || line[reqClose+1] != ' ' {
+		return dis.Record{}, false
+	}
+	tail := strings.SplitN(line[reqClose+2:], " ", 3)
 	if len(tail) < 2 {
 		return dis.Record{}, false
 	}
@@ -155,26 +183,16 @@ func parseNginxCombined(line string) (dis.Record, bool) {
 	}
 	respBytes, _ := strconv.ParseUint(tail[1], 10, 32)
 
-	// Parse the actual request timestamp from the log line so inter-request
-	// delta scoring is not poisoned by batch-read timing.
-	// parts[3]="[02/Jan/2006:15:04:05"  parts[4]="-0700]"
-	tsNs := time.Now().UnixNano()
-	tsRaw := strings.TrimPrefix(parts[3], "[") + " " + strings.TrimSuffix(parts[4], "]")
-	if t, err := time.Parse("02/Jan/2006:15:04:05 -0700", tsRaw); err == nil {
-		tsNs = t.UnixNano()
-	}
-
 	rec := dis.Record{
 		TsNs:      tsNs,
 		Status:    uint16(status),
 		RespBytes: uint32(respBytes),
 	}
 
-	// Method from parts[5]: "\"GET" → "GET"
-	rec.Method = encodeMethod(strings.TrimPrefix(parts[5], "\""))
+	// Method is the first space-separated token of the request field.
+	rec.Method = encodeMethod(strings.SplitN(request, " ", 2)[0])
 
-	// Basic UA-based threat scoring from the log (header-order scoring requires
-	// live request; this covers the most common automated scanner signatures).
+	// Basic UA-based threat scoring from the log.
 	if len(tail) == 3 {
 		rec.Score = scoreFromLogTail(tail[2], rec.Method)
 	}
@@ -230,18 +248,20 @@ func encodeMethod(m string) uint8 {
 }
 
 type healthResponse struct {
-	State   string `json:"state"`
-	AdMode  string `json:"ad_mode"`
-	Updated string `json:"updated"`
+	State        string  `json:"state"`
+	AdMode       string  `json:"ad_mode"`
+	HostileRatio float64 `json:"hostile_ratio"`
+	Updated      string  `json:"updated"`
 }
 
 func handleHealth(p *dis.Posture) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		state := p.State()
 		resp := healthResponse{
-			State:   state.String(),
-			AdMode:  dis.SelectAdMode(state).String(),
-			Updated: time.Now().UTC().Format(time.RFC3339),
+			State:        state.String(),
+			AdMode:       dis.SelectAdMode(state).String(),
+			HostileRatio: p.HostileRatio(),
+			Updated:      time.Now().UTC().Format(time.RFC3339),
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
