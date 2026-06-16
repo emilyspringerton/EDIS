@@ -2,7 +2,135 @@ package main
 
 import (
 	"testing"
+
+	"github.com/emilyspringerton/edis/internal/dis"
 )
+
+func TestParseIPPrefix(t *testing.T) {
+	cases := []struct {
+		ip   string
+		want uint32
+	}{
+		{"1.2.3.4", 1<<16 | 2<<8 | 3},
+		{"192.168.10.255", 192<<16 | 168<<8 | 10},
+		{"127.0.0.1", 127<<16 | 0<<8 | 0},
+		{"::1", 0},       // IPv6 — not supported
+		{"not-an-ip", 0}, // garbage
+		{"", 0},
+	}
+	for _, tc := range cases {
+		got := parseIPPrefix(tc.ip)
+		if got != tc.want {
+			t.Errorf("parseIPPrefix(%q) = %d, want %d", tc.ip, got, tc.want)
+		}
+	}
+}
+
+func TestIPTrackerDelta(t *testing.T) {
+	tracker := newIPTracker()
+	prefix := parseIPPrefix("1.2.3.4")
+	const base = int64(1_000_000_000) // 1s in nanoseconds
+
+	// First request: no prior entry → -1
+	d := tracker.delta(prefix, base)
+	if d != -1 {
+		t.Fatalf("first request: want -1, got %d", d)
+	}
+	// Second request 10ms later: delta = 10
+	d = tracker.delta(prefix, base+10_000_000)
+	if d != 10 {
+		t.Fatalf("10ms later: want 10, got %d", d)
+	}
+	// Third request 5ms later: delta = 5 → qualifies for +30
+	d = tracker.delta(prefix, base+15_000_000)
+	if d != 5 {
+		t.Fatalf("5ms later: want 5, got %d", d)
+	}
+	// Different /24 prefix is independent: first request → -1
+	other := parseIPPrefix("10.0.0.1")
+	d = tracker.delta(other, base+20_000_000)
+	if d != -1 {
+		t.Fatalf("new prefix first request: want -1, got %d", d)
+	}
+}
+
+func TestApplyDeltaScore(t *testing.T) {
+	tracker := newIPTracker()
+	const base = int64(1_000_000_000)
+
+	makeRec := func(ip string, tsNs int64) dis.Record {
+		rec, _ := parseNginxCombined(
+			ip + ` - - [16/Jun/2026:13:26:30 +0000] "GET / HTTP/1.1" 200 0 "-" "curl/7.x"`,
+		)
+		rec.TsNs = tsNs // override parsed timestamp with controlled value
+		return rec
+	}
+
+	// First request from 1.2.3.x → no delta bonus
+	rec := makeRec("1.2.3.4", base)
+	applyDeltaScore(&rec, tracker)
+	baseScore := rec.Score // whatever scoreFromLogTail gave
+	if rec.Score != baseScore {
+		t.Errorf("first request should not change score")
+	}
+
+	// Second request 5ms later (< 20ms) → +30 burst bonus
+	rec2 := makeRec("1.2.3.99", base+5_000_000)
+	applyDeltaScore(&rec2, tracker)
+	want := baseScore + 30
+	if want > 100 {
+		want = 100
+	}
+	if rec2.Score != uint8(want) {
+		t.Errorf("burst request: score=%d want %d", rec2.Score, want)
+	}
+
+	// Third request 500ms later (≥ 20ms) → no burst bonus
+	rec3 := makeRec("1.2.3.1", base+505_000_000)
+	applyDeltaScore(&rec3, tracker)
+	if rec3.Score != baseScore {
+		t.Errorf("slow request: score=%d want %d (no burst bonus)", rec3.Score, baseScore)
+	}
+}
+
+func TestDeltaScoreBurstRaisesHostileRatio(t *testing.T) {
+	ring := &dis.Ring{}
+	posture := dis.NewPosture()
+	tracker := newIPTracker()
+
+	const base = int64(1_000_000_000)
+	// Synthesise 20 burst requests from 10.20.30.x, each 5ms apart.
+	// Without delta scoring these are borderline (curl UA = 30); with delta
+	// scoring each scores 60 (=hostile threshold), so hostile_ratio should rise.
+	for i := 0; i < 20; i++ {
+		line := `10.20.30.5 - - [16/Jun/2026:13:26:30 +0000] "GET /wp-login.php HTTP/1.1" 200 0 "-" "curl/7.x"`
+		rec, ok := parseNginxCombined(line)
+		if !ok {
+			t.Fatalf("parse failed on iteration %d", i)
+		}
+		rec.TsNs = base + int64(i)*5_000_000 // 5ms apart
+		applyDeltaScore(&rec, tracker)
+		ring.Push(rec)
+		posture.IngestRaw(rec)
+	}
+
+	ratio := posture.HostileRatio()
+	if ratio <= 0 {
+		t.Errorf("hostile_ratio=%.4f after burst; expected >0 (delta scoring not raising scores)", ratio)
+	}
+}
+
+func TestParseNginxCombinedIPPrefix(t *testing.T) {
+	line := `1.2.3.4 - - [16/Jun/2026:13:26:30 +0000] "GET / HTTP/1.1" 200 0 "-" "-"`
+	rec, ok := parseNginxCombined(line)
+	if !ok {
+		t.Fatal("parse failed")
+	}
+	want := parseIPPrefix("1.2.3.4")
+	if rec.IPPrefix != want {
+		t.Errorf("IPPrefix=%d want %d", rec.IPPrefix, want)
+	}
+}
 
 func TestParseNginxCombined(t *testing.T) {
 	cases := []struct {

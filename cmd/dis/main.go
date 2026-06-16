@@ -20,15 +20,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/emilyspringerton/edis/internal/dis"
 )
 
 var (
-	flagLog       = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
-	flagAddr      = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
-	flagStdin     = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
+	flagLog        = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
+	flagAddr       = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
+	flagStdin      = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
 	flagAdminToken = flag.String("admin-token", "", "bearer token required for /dis/force (empty = endpoint disabled)")
 )
 
@@ -68,6 +69,7 @@ func main() {
 // Lines written during a reopen gap are NOT missed because we only reopen
 // after detecting rotation — we do not close-and-seek on every EOF poll.
 func tailFile(path string, ring *dis.Ring, p *dis.Posture) {
+	tracker := newIPTracker()
 	for {
 		f, err := os.Open(path)
 		if err != nil {
@@ -76,20 +78,21 @@ func tailFile(path string, ring *dis.Ring, p *dis.Posture) {
 			continue
 		}
 		f.Seek(0, io.SeekEnd) //nolint:errcheck
-		tailPoll(f, path, ring, p)
+		tailPoll(f, path, ring, p, tracker)
 		f.Close()
 	}
 }
 
 // tailPoll keeps f open and polls for new lines, sleeping 100ms on EOF.
 // Returns when the file has been rotated (inode change or file gone).
-func tailPoll(f *os.File, path string, ring *dis.Ring, p *dis.Posture) {
+func tailPoll(f *os.File, path string, ring *dis.Ring, p *dis.Posture, tracker *ipTracker) {
 	buf := bufio.NewReader(f)
 	for {
 		line, err := buf.ReadString('\n')
 		if line != "" {
 			rec, ok := parseNginxCombined(strings.TrimRight(line, "\r\n"))
 			if ok {
+				applyDeltaScore(&rec, tracker)
 				ring.Push(rec)
 				p.IngestRaw(rec)
 			}
@@ -126,6 +129,7 @@ func fileRotated(f *os.File, path string) bool {
 // tailReader reads log lines from r until EOF or error, parsing each line.
 // Used for stdin (-stdin flag) where polling is not needed.
 func tailReader(r io.Reader, ring *dis.Ring, p *dis.Posture) {
+	tracker := newIPTracker()
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := sc.Text()
@@ -133,6 +137,7 @@ func tailReader(r io.Reader, ring *dis.Ring, p *dis.Posture) {
 		if !ok {
 			continue
 		}
+		applyDeltaScore(&rec, tracker)
 		ring.Push(rec)
 		p.IngestRaw(rec)
 	}
@@ -192,6 +197,7 @@ func parseNginxCombined(line string) (dis.Record, bool) {
 		TsNs:      tsNs,
 		Status:    uint16(status),
 		RespBytes: uint32(respBytes),
+		IPPrefix:  parseIPPrefix(prefixFields[0]),
 	}
 
 	// Method is the first space-separated token of the request field.
@@ -203,6 +209,73 @@ func parseNginxCombined(line string) (dis.Record, bool) {
 	}
 
 	return rec, true
+}
+
+// parseIPPrefix packs the first three octets of an IPv4 address into a uint32
+// (bits 23-0 = a.b.c, bits 31-24 = 0). Returns 0 for IPv6 or invalid input.
+func parseIPPrefix(ip string) uint32 {
+	parts := strings.SplitN(ip, ".", 4)
+	if len(parts) != 4 {
+		return 0
+	}
+	a, e1 := strconv.ParseUint(parts[0], 10, 8)
+	b, e2 := strconv.ParseUint(parts[1], 10, 8)
+	c, e3 := strconv.ParseUint(parts[2], 10, 8)
+	if e1 != nil || e2 != nil || e3 != nil {
+		return 0
+	}
+	return uint32(a)<<16 | uint32(b)<<8 | uint32(c)
+}
+
+// ipTracker tracks the last-seen timestamp (nanoseconds) per /24 IPv4 prefix.
+// Bounded to ipTrackerMax entries; evicted wholesale when full to bound memory.
+const ipTrackerMax = 65535
+
+type ipTracker struct {
+	mu       sync.Mutex
+	lastSeen map[uint32]int64
+}
+
+func newIPTracker() *ipTracker {
+	return &ipTracker{lastSeen: make(map[uint32]int64, 256)}
+}
+
+// delta returns milliseconds since the last request from prefix, then updates
+// the last-seen time. Returns -1 on first request or for unknown prefixes.
+func (t *ipTracker) delta(prefix uint32, nowNs int64) int {
+	if prefix == 0 {
+		return -1
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	prev, ok := t.lastSeen[prefix]
+	if len(t.lastSeen) > ipTrackerMax {
+		// Evict all — trades precision for bounded memory; active scanners
+		// reappear on the next request and lose only one delta measurement.
+		t.lastSeen = make(map[uint32]int64, 256)
+	}
+	t.lastSeen[prefix] = nowNs
+	if !ok {
+		return -1
+	}
+	ms := int((nowNs - prev) / 1e6)
+	if ms < 0 {
+		return -1 // clock skew / log-timestamp disorder
+	}
+	return ms
+}
+
+// applyDeltaScore adds +30 to rec.Score when inter-request delta < 20ms,
+// matching the DIS scoring axiom in golden.md.
+func applyDeltaScore(rec *dis.Record, tracker *ipTracker) {
+	ms := tracker.delta(rec.IPPrefix, rec.TsNs)
+	if ms >= 0 && ms < 20 {
+		extra := int(rec.Score) + 30
+		if extra > 100 {
+			extra = 100
+		}
+		rec.Score = uint8(extra)
+	}
 }
 
 // scoreFromLogTail derives a partial threat score from the referer+UA portion of
