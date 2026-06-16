@@ -4,7 +4,9 @@
 
 - fix(ops): nginx/edis.conf — php8.1-fpm.sock corrected to php8.3-fpm.sock (matches install.sh PHP_VER=8.3)
 - feat(ops): ops/dis.service — systemd unit for edis-dis collector daemon; ExecStart with nginx log path + :9099 addr
-- feat(ops): ops/sprint-deploy.sh — S23-01 full-stack deploy runner; phases: WordPress+EDIS → DIS daemon → certbot SSL → HTTPS URL migration → smoke tests
+- feat(ops): ops/sprint-deploy.sh — S23-01 full-stack deploy runner; phases: WordPress+EDIS → DIS daemon → certbot SSL → HTTPS URL migration → git sync wiring → smoke tests
+- feat(ops): ops/edis-sudoers — NOPASSWD sudoers fragment for fatbaby to run deploy.sh; installed by sprint-deploy.sh
+- feat(ops): .git/hooks/post-merge — auto-runs deploy.sh --plugins-only after git pull
 
 ## 2026-06-15
 

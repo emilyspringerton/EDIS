@@ -1,0 +1,6 @@
+# /etc/sudoers.d/edis-deploy
+# Allows fatbaby to run EDIS deploy scripts without password.
+# Install: sudo cp /home/fatbaby/EDIS/ops/edis-sudoers /etc/sudoers.d/edis-deploy && sudo chmod 440 /etc/sudoers.d/edis-deploy
+fatbaby ALL=(ALL) NOPASSWD: /bin/bash /home/fatbaby/EDIS/ops/deploy.sh
+fatbaby ALL=(ALL) NOPASSWD: /bin/bash /home/fatbaby/EDIS/ops/deploy.sh --plugins-only
+fatbaby ALL=(ALL) NOPASSWD: /bin/bash /home/fatbaby/EDIS/ops/deploy.sh --nginx-only

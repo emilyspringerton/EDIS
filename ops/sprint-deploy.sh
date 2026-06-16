@@ -76,6 +76,25 @@ fi
 wp search-replace "http://${DOMAIN}" "https://${DOMAIN}" \
     --path="${WP_PATH}" --allow-root --skip-columns=guid 2>/dev/null || true
 
+# ── Phase 5.5: Git sync — sudoers + post-merge hook ────────────────────────
+echo ""
+echo "━━━ Phase 5.5: Git sync wiring ━━━"
+
+# Install the sudoers fragment so fatbaby can run deploy.sh without a password.
+SUDOERS_SRC="${REPO_DIR}/ops/edis-sudoers"
+SUDOERS_DEST="/etc/sudoers.d/edis-deploy"
+if [ ! -f "${SUDOERS_DEST}" ]; then
+    cp "${SUDOERS_SRC}" "${SUDOERS_DEST}"
+    chmod 440 "${SUDOERS_DEST}"
+    echo "    ✓ sudoers entry installed: fatbaby can run deploy.sh NOPASSWD"
+else
+    echo "    ✓ sudoers entry already present"
+fi
+
+# Ensure post-merge hook is executable.
+HOOK="${REPO_DIR}/.git/hooks/post-merge"
+[ -f "${HOOK}" ] && chmod +x "${HOOK}" && echo "    ✓ post-merge hook active"
+
 # ── Phase 5: Smoke tests ─────────────────────────────────────────────────────
 echo ""
 echo "━━━ Phase 5: Smoke tests ━━━"
@@ -118,6 +137,9 @@ echo "╠═══════════════════════�
 echo "║  IDUNA API:  https://${DOMAIN}/api/v1/*            ║"
 echo "║  Ticker:     https://${DOMAIN}/ticker/AAPL         ║"
 echo "║  Ask Emily:  https://${DOMAIN}/ask/                ║"
+echo "╠══════════════════════════════════════════════════════════════╣"
+echo "║  GIT SYNC: cd /home/fatbaby/EDIS && git pull               ║"
+echo "║    → post-merge hook auto-runs deploy.sh (NOPASSWD)        ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  NEXT: start FatBaby signalapi for live signal data         ║"
 echo "║    emily start --signalapi                                  ║"
