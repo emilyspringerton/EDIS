@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-06-16
+- feat(dis): S35-01 ForceState endpoint (POST /dis/force, Bearer auth, admin panel button) + S35-02 lazy edis_dis_collector_url() replacing constant-at-boot
 - fix(dis): rewrite parseNginxCombined to locate $request by its surrounding quotes instead of fixed space-index split; the old approach shifted all field indices when nginx logged "-" for malformed requests (no internal spaces), silently dropping all 400-class lines — exactly the scanner/bot traffic DIS most needs to score
 - fix(dis): swap hostileN before totalN in Posture.recompute() so goroutines racing the window boundary inflate the denominator rather than the numerator, keeping hostile_ratio conservative
 - feat(dis): add hostile_ratio to /dis/health JSON response; show hostile_ratio in WordPress admin posture panel
