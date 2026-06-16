@@ -11,8 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-define( 'EDIS_DIS_COLLECTOR_URL', get_option( 'edis_dis_collector_url', 'http://127.0.0.1:9099' ) );
 define( 'EDIS_DIS_CACHE_TTL', 10 ); // seconds; short TTL so posture stays fresh
+
+/**
+ * Returns the DIS collector URL lazily so option changes take effect immediately.
+ * Using a constant defined via get_option() at plugin include time would freeze
+ * the value before plugins_loaded and break option changes without a restart.
+ */
+function edis_dis_collector_url(): string {
+    return get_option( 'edis_dis_collector_url', 'http://127.0.0.1:9099' );
+}
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -56,7 +64,7 @@ function edis_dis_ad_mode(): string {
 }
 
 function edis_dis_fetch_state(): string {
-    $resp = wp_remote_get( EDIS_DIS_COLLECTOR_URL . '/dis/health', [
+    $resp = wp_remote_get( edis_dis_collector_url() . '/dis/health', [
         'timeout'   => 1,
         'sslverify' => false,
     ]);
@@ -72,7 +80,7 @@ function edis_dis_fetch_state(): string {
 }
 
 function edis_dis_fetch_ad_mode(): string {
-    $resp = wp_remote_get( EDIS_DIS_COLLECTOR_URL . '/dis/admode', [
+    $resp = wp_remote_get( edis_dis_collector_url() . '/dis/admode', [
         'timeout'   => 1,
         'sslverify' => false,
     ]);
@@ -194,11 +202,31 @@ function edis_dis_admin_page(): void {
     // Handle settings save
     if ( isset( $_POST['edis_dis_save'] ) && check_admin_referer( 'edis_dis_settings' ) ) {
         update_option( 'edis_dis_collector_url', sanitize_url( $_POST['edis_dis_collector_url'] ?? '' ) );
+        update_option( 'edis_dis_admin_token', sanitize_text_field( $_POST['edis_dis_admin_token'] ?? '' ) );
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
 
+    // Handle manual ForceState override
+    if ( isset( $_POST['edis_dis_force'] ) && check_admin_referer( 'edis_dis_force' ) ) {
+        $state = sanitize_key( $_POST['edis_dis_force_state'] ?? '' );
+        $token = get_option( 'edis_dis_admin_token', '' );
+        if ( $token && in_array( $state, [ 'healthy', 'elevated', 'attack', 'degraded' ], true ) ) {
+            $result = wp_remote_post(
+                edis_dis_collector_url() . '/dis/force?state=' . urlencode( $state ),
+                [ 'timeout' => 2, 'headers' => [ 'Authorization' => 'Bearer ' . $token ] ]
+            );
+            if ( is_wp_error( $result ) ) {
+                echo '<div class="notice notice-error"><p>Force failed: ' . esc_html( $result->get_error_message() ) . '</p></div>';
+            } else {
+                echo '<div class="updated"><p>Posture forced to <strong>' . esc_html( $state ) . '</strong>.</p></div>';
+            }
+        } elseif ( ! $token ) {
+            echo '<div class="notice notice-warning"><p>Set an admin token in Settings to enable manual override.</p></div>';
+        }
+    }
+
     // Fetch live posture from collector
-    $resp = wp_remote_get( EDIS_DIS_COLLECTOR_URL . '/dis/posture', [ 'timeout' => 2 ] );
+    $resp = wp_remote_get( edis_dis_collector_url() . '/dis/posture', [ 'timeout' => 2 ] );
     $posture = null;
     if ( ! is_wp_error( $resp ) ) {
         $posture = json_decode( wp_remote_retrieve_body( $resp ), true );
@@ -218,7 +246,7 @@ function edis_dis_admin_page(): void {
             </tbody>
         </table>
         <?php else: ?>
-        <div class="notice notice-warning"><p>DIS collector not reachable at <code><?php echo esc_html( EDIS_DIS_COLLECTOR_URL ); ?></code>. Install and start the <code>dis</code> binary.</p></div>
+        <div class="notice notice-warning"><p>DIS collector not reachable at <code><?php echo esc_html( edis_dis_collector_url() ); ?></code>. Install and start the <code>dis</code> binary.</p></div>
         <?php endif; ?>
 
         <form method="post">
@@ -233,9 +261,36 @@ function edis_dis_admin_page(): void {
                         <p class="description">The address where <code>dis</code> daemon is listening. Default: <code>http://127.0.0.1:9099</code></p>
                     </td>
                 </tr>
+                <tr>
+                    <th>Admin Token</th>
+                    <td>
+                        <input type="password" name="edis_dis_admin_token"
+                            value="<?php echo esc_attr( get_option( 'edis_dis_admin_token', '' ) ); ?>"
+                            class="regular-text" autocomplete="new-password" />
+                        <p class="description">Bearer token passed to <code>/dis/force</code>. Must match the <code>--admin-token</code> flag on the <code>dis</code> binary. Required for manual override.</p>
+                    </td>
+                </tr>
             </table>
-            <p class="submit"><input type="submit" name="edis_dis_save" class="button-primary" value="Save" /></p>
+            <p class="submit"><input type="submit" name="edis_dis_save" class="button-primary" value="Save Settings" /></p>
         </form>
+
+        <h2>Manual Override</h2>
+        <?php $has_token = (bool) get_option( 'edis_dis_admin_token', '' ); ?>
+        <?php if ( ! $has_token ): ?>
+        <p class="description">Set an admin token above to enable manual posture override.</p>
+        <?php else: ?>
+        <form method="post">
+            <?php wp_nonce_field( 'edis_dis_force' ); ?>
+            <select name="edis_dis_force_state">
+                <option value="healthy">Healthy</option>
+                <option value="elevated">Elevated</option>
+                <option value="attack">Attack</option>
+                <option value="degraded">Degraded</option>
+            </select>
+            <input type="submit" name="edis_dis_force" class="button button-secondary" value="Force Posture" />
+            <p class="description">Immediately override the DIS collector state. Use during incidents when automated detection is insufficient.</p>
+        </form>
+        <?php endif; ?>
 
         <h2>Shortcode</h2>
         <pre>[edis_dis_ad slot="sidebar" src="https://ads.example.com/banner.svg" href="https://example.com"]</pre>

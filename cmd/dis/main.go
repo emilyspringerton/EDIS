@@ -26,9 +26,10 @@ import (
 )
 
 var (
-	flagLog  = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
-	flagAddr = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
-	flagStdin = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
+	flagLog       = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
+	flagAddr      = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
+	flagStdin     = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
+	flagAdminToken = flag.String("admin-token", "", "bearer token required for /dis/force (empty = endpoint disabled)")
 )
 
 func main() {
@@ -51,6 +52,10 @@ func main() {
 	mux.HandleFunc("/dis/health", handleHealth(posture))
 	mux.HandleFunc("/dis/posture", handlePosture(posture))
 	mux.HandleFunc("/dis/admode", handleAdMode(posture))
+	if *flagAdminToken != "" {
+		mux.HandleFunc("/dis/force", handleForce(posture, *flagAdminToken))
+		log.Printf("dis: /dis/force admin endpoint enabled")
+	}
 
 	log.Printf("dis collector listening on %s (tailing %s)", *flagAddr, *flagLog)
 	if err := http.ListenAndServe(*flagAddr, mux); err != nil {
@@ -302,4 +307,37 @@ func handleAdMode(p *dis.Posture) http.HandlerFunc {
 func mustJSON(v any) []byte {
 	b, _ := json.Marshal(v)
 	return b
+}
+
+// handleForce handles POST /dis/force?state=<state>
+// Requires Authorization: Bearer <admin-token> header.
+// Valid states: healthy, elevated, attack, degraded.
+func handleForce(p *dis.Posture, token string) http.HandlerFunc {
+	stateMap := map[string]dis.HealthState{
+		"healthy":  dis.StateHealthy,
+		"elevated": dis.StateElevated,
+		"attack":   dis.StateAttack,
+		"degraded": dis.StateDegraded,
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		auth := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if auth != token {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		stateStr := r.URL.Query().Get("state")
+		s, ok := stateMap[strings.ToLower(stateStr)]
+		if !ok {
+			http.Error(w, "invalid state; valid: healthy, elevated, attack, degraded", http.StatusBadRequest)
+			return
+		}
+		p.ForceState(s)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"ok":true,"state":%q}`, stateStr)
+		log.Printf("dis: ForceState → %s (operator override)", stateStr)
+	}
 }
