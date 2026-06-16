@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-06-16
+- S30-04: /signals/ nginx proxy block in edis.conf → iduna.farthq.com/signals/ routes to signalapi :9091 with 60s GET cache
 
 - fix(ops): nginx/edis.conf — php8.1-fpm.sock corrected to php8.3-fpm.sock (matches install.sh PHP_VER=8.3)
 - feat(ops): ops/dis.service — systemd unit for edis-dis collector daemon; ExecStart with nginx log path + :9099 addr
