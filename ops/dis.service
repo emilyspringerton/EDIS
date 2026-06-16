@@ -1,0 +1,15 @@
+[Unit]
+Description=EDIS Digital Immune System collector
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/edis-dis --log /var/log/nginx/access.log --addr 127.0.0.1:9099
+Restart=on-failure
+RestartSec=10
+MemoryMax=64M
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

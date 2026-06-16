@@ -1,5 +1,11 @@
 # EDIS Changelog
 
+## 2026-06-16
+
+- fix(ops): nginx/edis.conf — php8.1-fpm.sock corrected to php8.3-fpm.sock (matches install.sh PHP_VER=8.3)
+- feat(ops): ops/dis.service — systemd unit for edis-dis collector daemon; ExecStart with nginx log path + :9099 addr
+- feat(ops): ops/sprint-deploy.sh — S23-01 full-stack deploy runner; phases: WordPress+EDIS → DIS daemon → certbot SSL → HTTPS URL migration → smoke tests
+
 ## 2026-06-15
 
 - ops: domain migrated to iduna.farthq.com; nginx adds /api/ proxy to IDUNA :8080 + CORS + JWKS; EDIS_IDUNA_BASE_URL constant added to install.sh + docs; certbot updated for new domain
