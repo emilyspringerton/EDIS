@@ -1,4 +1,5 @@
 # Runtime / build artifacts
+dis
 dis/
 *.log
 node_modules/
