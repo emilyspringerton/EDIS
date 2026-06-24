@@ -1,0 +1,16 @@
+{
+  "version":      "0.1.0-alpha",
+  "released_at":  "2026-06-24",
+  "size_mb":      48,
+  "demo_size_mb": 12,
+  "changelog":    "VS0 Detroit slice — Detroit Apartment (scene 200) + Detroit School (scene 201). Jiangshi faction NPCs, Emily OS ambient voice, flip phone interface.",
+  "required":     "0.1.0-alpha",
+  "full_client": {
+    "filename": "gfd-client-0.1.0-alpha.zip",
+    "sha256":   "placeholder-replace-after-first-build"
+  },
+  "demo_client": {
+    "filename": "gfd-client-demo-0.1.0-alpha.zip",
+    "sha256":   "placeholder-replace-after-first-build"
+  }
+}

@@ -1,0 +1,516 @@
+/*
+Theme Name: GoblinDragon
+Theme URI: https://goblinfoxdragon.com
+Author: EINHORN_INDUSTRIAL / Emily Springerton
+Description: TRAPX city portal theme. Dark urban palette, CRT-scanline hero, Channel 11 broadcast frame on login. Modern clean — not retro garbage.
+Version: 1.0.0
+License: MIT
+Text Domain: goblindragon
+*/
+
+/* ── Base reset + palette ────────────────────────────────────────────────── */
+
+:root {
+    --gfd-black:      #0a0a0a;
+    --gfd-dark:       #111111;
+    --gfd-mid:        #1c1c1c;
+    --gfd-border:     #2a2a2a;
+    --gfd-text:       #d4d4d4;
+    --gfd-muted:      #666666;
+    --gfd-accent:     #e8c842;   /* Channel 11 gold */
+    --gfd-freq:       #4ad1d1;   /* The Frequency cyan */
+    --gfd-bloc:       #d14a4a;   /* The Bloc red */
+    --gfd-procure:    #a078d4;   /* Procurement Houses purple */
+    --gfd-crt-line:   rgba(0,0,0,0.08);
+    --font-mono:      'IBM Plex Mono', 'Courier New', monospace;
+    --font-sans:      'Inter', 'Helvetica Neue', sans-serif;
+    --radius:         4px;
+    --max-width:      1100px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+    background: var(--gfd-black);
+    color: var(--gfd-text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+a { color: var(--gfd-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img { max-width: 100%; height: auto; display: block; }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+
+.gfd-container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.gfd-section {
+    padding: 80px 0;
+}
+
+/* ── Header / nav ────────────────────────────────────────────────────────── */
+
+.gfd-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.96);
+    border-bottom: 1px solid var(--gfd-border);
+    backdrop-filter: blur(8px);
+}
+
+.gfd-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+
+.gfd-logo {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gfd-accent);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.gfd-nav {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+}
+
+.gfd-nav a {
+    font-size: 0.85rem;
+    color: var(--gfd-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: color 0.15s;
+}
+
+.gfd-nav a:hover { color: var(--gfd-text); text-decoration: none; }
+
+.gfd-nav-cta a {
+    background: var(--gfd-accent);
+    color: var(--gfd-black);
+    padding: 6px 16px;
+    border-radius: var(--radius);
+    font-weight: 700;
+    transition: background 0.15s;
+}
+
+.gfd-nav-cta a:hover { background: #f0d060; }
+
+/* ── Hero — CRT scanline effect ──────────────────────────────────────────── */
+
+.gfd-hero {
+    position: relative;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    background: var(--gfd-dark);
+    overflow: hidden;
+}
+
+.gfd-hero__bg {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.3) 100%),
+        url('images/city-hero.jpg') center/cover no-repeat;
+}
+
+/* CRT scanline overlay */
+.gfd-hero__scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        var(--gfd-crt-line) 2px,
+        var(--gfd-crt-line) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Subtle chromatic vignette */
+.gfd-hero__vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.gfd-hero__content {
+    position: relative;
+    z-index: 2;
+    max-width: 700px;
+}
+
+.gfd-hero__tag {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--gfd-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+}
+
+.gfd-hero__tag::before { content: "▶ "; }
+
+.gfd-hero__title {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    line-height: 1.05;
+    color: #fff;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+}
+
+.gfd-hero__title span { color: var(--gfd-accent); }
+
+.gfd-hero__subtitle {
+    font-size: 1.15rem;
+    color: var(--gfd-muted);
+    max-width: 520px;
+    margin-bottom: 40px;
+    line-height: 1.7;
+}
+
+.gfd-btn {
+    display: inline-block;
+    padding: 14px 32px;
+    border-radius: var(--radius);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: none;
+}
+
+.gfd-btn--primary {
+    background: var(--gfd-accent);
+    color: var(--gfd-black);
+}
+
+.gfd-btn--primary:hover {
+    background: #f0d060;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.gfd-btn--ghost {
+    background: transparent;
+    color: var(--gfd-text);
+    border: 1px solid var(--gfd-border);
+    margin-left: 16px;
+}
+
+.gfd-btn--ghost:hover {
+    border-color: var(--gfd-text);
+    text-decoration: none;
+}
+
+/* ── Channel 11 broadcast frame — used on login modal ────────────────────── */
+
+.gfd-broadcast-frame {
+    border: 2px solid var(--gfd-accent);
+    position: relative;
+    background: var(--gfd-dark);
+}
+
+.gfd-broadcast-frame::before {
+    content: "● LIVE  CHANNEL 11";
+    position: absolute;
+    top: -1px;
+    left: 16px;
+    transform: translateY(-50%);
+    background: var(--gfd-black);
+    color: var(--gfd-accent);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    padding: 0 8px;
+    text-transform: uppercase;
+}
+
+.gfd-broadcast-frame::after {
+    content: attr(data-timecode);
+    position: absolute;
+    top: -1px;
+    right: 16px;
+    transform: translateY(-50%);
+    background: var(--gfd-black);
+    color: var(--gfd-muted);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 0 8px;
+}
+
+/* ── Tiers grid ──────────────────────────────────────────────────────────── */
+
+.gfd-tiers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 48px;
+}
+
+.gfd-tier {
+    background: var(--gfd-mid);
+    border: 1px solid var(--gfd-border);
+    border-radius: var(--radius);
+    padding: 32px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+.gfd-tier:hover { border-color: var(--gfd-accent); }
+
+.gfd-tier--featured {
+    border-color: var(--gfd-freq);
+}
+
+.gfd-tier__badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gfd-freq);
+    color: var(--gfd-black);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 12px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+}
+
+.gfd-tier__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--gfd-muted);
+    margin-bottom: 8px;
+}
+
+.gfd-tier__price {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.gfd-tier__price span {
+    font-size: 1rem;
+    color: var(--gfd-muted);
+    font-weight: 400;
+}
+
+.gfd-tier__desc {
+    font-size: 0.9rem;
+    color: var(--gfd-muted);
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--gfd-border);
+}
+
+.gfd-tier__features {
+    list-style: none;
+    margin-bottom: 32px;
+}
+
+.gfd-tier__features li {
+    font-size: 0.9rem;
+    padding: 6px 0;
+    color: var(--gfd-text);
+}
+
+.gfd-tier__features li::before {
+    content: "✓  ";
+    color: var(--gfd-freq);
+    font-weight: 700;
+}
+
+.gfd-tier--bloc .gfd-tier__features li::before { color: var(--gfd-bloc); }
+
+/* ── Section headings ────────────────────────────────────────────────────── */
+
+.gfd-section__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--gfd-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 12px;
+}
+
+.gfd-section__title {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 16px;
+}
+
+.gfd-section__body {
+    font-size: 1rem;
+    color: var(--gfd-muted);
+    max-width: 600px;
+    line-height: 1.8;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.gfd-footer {
+    border-top: 1px solid var(--gfd-border);
+    padding: 32px 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--gfd-muted);
+}
+
+.gfd-footer__inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.gfd-footer__signal {
+    color: var(--gfd-freq);
+}
+
+/* ── Login modal (broadcast frame) ──────────────────────────────────────── */
+
+.gfd-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.gfd-modal-overlay.is-open { display: flex; }
+
+.gfd-modal {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+}
+
+.gfd-form__field { margin-bottom: 20px; }
+
+.gfd-form__label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gfd-muted);
+    margin-bottom: 8px;
+}
+
+.gfd-form__input {
+    width: 100%;
+    background: var(--gfd-black);
+    border: 1px solid var(--gfd-border);
+    color: var(--gfd-text);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
+    transition: border-color 0.15s;
+    outline: none;
+}
+
+.gfd-form__input:focus { border-color: var(--gfd-freq); }
+
+.gfd-form__submit {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.gfd-modal__close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: var(--gfd-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    font-family: var(--font-mono);
+}
+
+.gfd-modal__close:hover { color: var(--gfd-text); }
+
+/* ── Video trailer slot ──────────────────────────────────────────────────── */
+
+.gfd-trailer {
+    aspect-ratio: 16/9;
+    background: var(--gfd-mid);
+    border: 1px solid var(--gfd-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+}
+
+.gfd-trailer__placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--gfd-muted);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.gfd-trailer__play {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--gfd-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: var(--gfd-accent);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.gfd-trailer__play:hover { background: rgba(232,200,66,0.1); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .gfd-nav { display: none; }
+    .gfd-hero { min-height: 60vh; }
+    .gfd-tiers { grid-template-columns: 1fr; }
+    .gfd-footer__inner { flex-direction: column; }
+}

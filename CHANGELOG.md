@@ -1,5 +1,11 @@
 # EDIS Changelog
 
+## 2026-06-24
+- feat(goblindragon): S124-01 dark CRT-scanline WordPress theme — Channel 11 broadcast frame, 3-tier pricing, login modal (Apple #3496)
+- feat(goblindragon): S124-03 page-account.php subscription dashboard, page-profile.php public profile, page-download.php tier-gated client download (Apple #3498)
+- feat(dis-gfd-subscription): S124-04 IDUNA JWT validation plugin — [gfd_tier] shortcode, gfd_login/gfd_download_url AJAX handlers, AWS4-HMAC-SHA256 S3 presign (Apple #3499)
+- feat(dis-gfd-subscription): S124-05 gfd-version-manifest.json v0.1.0-alpha, /api/gfd-version.json endpoint (Apple #3500)
+
 ## 2026-06-16
 - S35-03: per-IP /24 delta scoring in DIS log tailer (ipTracker, applyDeltaScore, 5 new tests)
 - feat(dis): S35-01 ForceState endpoint (POST /dis/force, Bearer auth, admin panel button) + S35-02 lazy edis_dis_collector_url() replacing constant-at-boot
