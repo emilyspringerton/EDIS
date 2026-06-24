@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-06-24
+- feat: S125-05 page-profile.php hits real /api/v1/players/{slug}/profile; renders job, K/D, faction rep, TRAPX activity (Apple #3658)
 - feat: S126-11 edis_related shortcode — GET /v1/entities/{ticker}/related, related-network.php template, CSS mini-network widget
 - feat(goblindragon): S124-01 dark CRT-scanline WordPress theme — Channel 11 broadcast frame, 3-tier pricing, login modal (Apple #3496)
 - feat(goblindragon): S124-03 page-account.php subscription dashboard, page-profile.php public profile, page-download.php tier-gated client download (Apple #3498)
