@@ -47,3 +47,38 @@
     color: #6b7280;
     line-height: 1.4;
 }
+
+/* ── Related Network (S126-11) ─────────────────────────────────────────────── */
+
+.edis-related { margin: 1rem 0; }
+.edis-related__heading { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem; }
+.edis-related__empty { color: #6b7280; font-size: 0.85rem; }
+
+.edis-related__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.edis-related__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    background: #f3f4f6;
+    border-radius: 4px;
+    font-size: 0.82rem;
+}
+
+.edis-related__ticker { font-weight: 700; color: #111; }
+.edis-related__weight {
+    background: #d1fae5;
+    color: #065f46;
+    padding: 0 0.3rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+.edis-related__date { color: #9ca3af; font-size: 0.72rem; }

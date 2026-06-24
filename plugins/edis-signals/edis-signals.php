@@ -104,6 +104,25 @@ function edis_press_releases_shortcode( array $atts ): string {
     return ob_get_clean();
 }
 
+// ── Related entities mini-network (S126-11) ────────────────────────────────────
+
+add_shortcode( 'edis_related', 'edis_related_shortcode' );
+function edis_related_shortcode( array $atts ): string {
+    $atts   = shortcode_atts( [ 'ticker' => '' ], $atts );
+    $ticker = strtoupper( sanitize_text_field( $atts['ticker'] ) );
+    if ( empty( $ticker ) ) {
+        return '<p class="edis-error">edis_related: ticker attribute required.</p>';
+    }
+    $data = edis_get_related_entities( $ticker );
+    if ( is_wp_error( $data ) ) {
+        return '<p class="edis-error">' . esc_html( $data->get_error_message() ) . '</p>';
+    }
+    $related = isset( $data['related'] ) && is_array( $data['related'] ) ? $data['related'] : [];
+    ob_start();
+    include EDIS_SIGNALS_DIR . 'templates/related-network.php';
+    return ob_get_clean();
+}
+
 // ── Sidebar Widget ────────────────────────────────────────────────────────────
 
 add_action( 'widgets_init', function () {

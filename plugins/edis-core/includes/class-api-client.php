@@ -111,6 +111,17 @@ class EDIS_Core_API_Client {
         return $this->get( '/v1/press-releases/' . strtoupper( $ticker ), [ 'limit' => $limit ] );
     }
 
+    /**
+     * Fetch related entities (co-occurrence graph) for a ticker.
+     * Returns { ticker, related: [{ticker, weight, last_seen}] }
+     */
+    public function get_related_entities( string $ticker ) {
+        if ( empty( $this->signalapi_url ) ) {
+            return new WP_Error( 'edis_not_configured', '[EDIS] signalapi URL not set' );
+        }
+        return $this->get( '/v1/entities/' . strtoupper( $ticker ) . '/related' );
+    }
+
     // ── Emily Prime ───────────────────────────────────────────────────────────
 
     /**
