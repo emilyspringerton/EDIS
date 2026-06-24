@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-06-24
+- feat: S126-11 edis_related shortcode — GET /v1/entities/{ticker}/related, related-network.php template, CSS mini-network widget
 - feat(goblindragon): S124-01 dark CRT-scanline WordPress theme — Channel 11 broadcast frame, 3-tier pricing, login modal (Apple #3496)
 - feat(goblindragon): S124-03 page-account.php subscription dashboard, page-profile.php public profile, page-download.php tier-gated client download (Apple #3498)
 - feat(dis-gfd-subscription): S124-04 IDUNA JWT validation plugin — [gfd_tier] shortcode, gfd_login/gfd_download_url AJAX handlers, AWS4-HMAC-SHA256 S3 presign (Apple #3499)
