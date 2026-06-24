@@ -71,33 +71,36 @@ if (!$slug) {
         return;
     }
 
-    // Pull public player data from IDUNA Apples (filtered by actor=slug).
-    // In production this hits a dedicated /api/v1/players/{slug}/profile endpoint.
-    fetch(cfg.idunaUrl + '/api/v1/apples?source_repo=GoblinFoxDragon&limit=20', {
-        headers: cfg.currentUser ? { 'Authorization': 'Bearer ' + (window.gfdToken || '') } : {}
+    // S125-05: hit the real /api/v1/players/{slug}/profile endpoint.
+    fetch(cfg.idunaUrl + '/api/v1/players/' + encodeURIComponent(slug) + '/profile', {
+        headers: window.gfdToken ? { 'Authorization': 'Bearer ' + window.gfdToken } : {}
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
     .then(function(data) {
         loading.style.display = 'none';
         content.style.display = 'block';
-        document.getElementById('gfd-profile-name').textContent = slug;
-        document.getElementById('gfd-profile-job').textContent  = 'TRAPX Operative';
+        document.getElementById('gfd-profile-name').textContent = data.display_name || slug;
+        document.getElementById('gfd-profile-job').textContent  = (data.job || 'WAR') + ' · K/D ' + (data.kd_ratio || 0).toFixed(2);
 
-        // Stub rep values — replaced by real player API.
-        document.getElementById('gfd-rep-frequency').textContent  = '1';
-        document.getElementById('gfd-rep-bloc').textContent       = '1';
-        document.getElementById('gfd-rep-procurement').textContent = '1';
+        var rep = data.faction_rep || {};
+        document.getElementById('gfd-rep-frequency').textContent   = rep.sandoria || 0;
+        document.getElementById('gfd-rep-bloc').textContent        = rep.bastok   || 0;
+        document.getElementById('gfd-rep-procurement').textContent = rep.windurst || 0;
 
-        var apples = data.apples || [];
+        var activity = data.trapx_activity || [];
         var ul = document.getElementById('gfd-activity');
-        if (apples.length === 0) {
+        if (activity.length === 0) {
             document.getElementById('gfd-no-activity').style.display = 'block';
         } else {
-            apples.slice(0, 10).forEach(function(a) {
+            activity.forEach(function(a) {
                 var li = document.createElement('li');
                 li.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--gfd-border);font-size:0.85rem;display:flex;gap:12px;';
                 li.innerHTML =
                     '<span style="color:var(--gfd-muted);font-family:var(--font-mono);font-size:0.75rem;white-space:nowrap;">' + (a.recorded_at || '').slice(0,10) + '</span>' +
+                    '<span style="color:var(--gfd-freq);font-family:var(--font-mono);font-size:0.7rem;">[' + (a.apple_type || '') + ']</span>' +
                     '<span>' + (a.title || '') + '</span>';
                 ul.appendChild(li);
             });
