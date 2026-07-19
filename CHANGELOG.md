@@ -1,5 +1,10 @@
 # EDIS Changelog
 
+## 2026-07-19
+
+- Real hashcash-style PoW gate for AdModePOWCAPTCHA (was a stub) — internal/dis/pow.go, /dis/pow/challenge + /dis/pow/verify collector endpoints, WordPress REST proxy + client-side solver. Fixed a latent .gitignore bug that silently blocked new files in internal/dis and cmd/dis.
+
+
 ## 2026-06-24
 - feat: S125-05 page-profile.php hits real /api/v1/players/{slug}/profile; renders job, K/D, faction rep, TRAPX activity (Apple #3658)
 - feat: S126-11 edis_related shortcode — GET /v1/entities/{ticker}/related, related-network.php template, CSS mini-network widget
