@@ -1,6 +1,7 @@
 # EDIS Changelog
 
 ## 2026-07-19
+- DIS-for-DNS northstar written — real audit found no DNSSEC/CAA/DMARC on okemily.com/farthq.com despite Cloudflare hosting; 4 threat classes scoped (cache poisoning, rogue cert issuance, subdomain takeover, typosquatting) with phased defenses
 
 - Real hashcash-style PoW gate for AdModePOWCAPTCHA (was a stub) — internal/dis/pow.go, /dis/pow/challenge + /dis/pow/verify collector endpoints, WordPress REST proxy + client-side solver. Fixed a latent .gitignore bug that silently blocked new files in internal/dis and cmd/dis.
 
