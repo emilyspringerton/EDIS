@@ -1,6 +1,10 @@
 # Runtime / build artifacts
-dis
-dis/
+# Anchored to repo root ("/dis", not "dis/") — an unanchored "dis/" here
+# previously matched internal/dis and cmd/dis too, silently blocking `git
+# add` on any new file in either package without -f. Found while adding
+# internal/dis/pow.go.
+/dis
 *.log
 node_modules/
 vendor/
+bin/

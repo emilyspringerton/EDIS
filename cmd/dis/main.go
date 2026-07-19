@@ -27,10 +27,11 @@ import (
 )
 
 var (
-	flagLog        = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
-	flagAddr       = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
-	flagStdin      = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
-	flagAdminToken = flag.String("admin-token", "", "bearer token required for /dis/force (empty = endpoint disabled)")
+	flagLog           = flag.String("log", "/var/log/nginx/access.log", "nginx access log to tail")
+	flagAddr          = flag.String("addr", "127.0.0.1:9099", "listen address for health/posture endpoints")
+	flagStdin         = flag.Bool("stdin", false, "read log lines from stdin instead of tailing a file")
+	flagAdminToken    = flag.String("admin-token", "", "bearer token required for /dis/force (empty = endpoint disabled)")
+	flagPOWDifficulty = flag.Uint("pow-difficulty", dis.DefaultPOWDifficulty, "required leading zero bits for the AdModePOWCAPTCHA gate")
 )
 
 func main() {
@@ -38,6 +39,11 @@ func main() {
 
 	ring := &dis.Ring{}
 	posture := dis.NewPosture()
+
+	powIssuer, err := dis.NewPOWIssuer(uint8(*flagPOWDifficulty))
+	if err != nil {
+		log.Fatalf("dis: init pow issuer: %v", err)
+	}
 
 	// Start log tailer in background
 	go func() {
@@ -53,6 +59,8 @@ func main() {
 	mux.HandleFunc("/dis/health", handleHealth(posture))
 	mux.HandleFunc("/dis/posture", handlePosture(posture))
 	mux.HandleFunc("/dis/admode", handleAdMode(posture))
+	mux.HandleFunc("/dis/pow/challenge", handlePOWChallenge(powIssuer))
+	mux.HandleFunc("/dis/pow/verify", handlePOWVerify(powIssuer))
 	if *flagAdminToken != "" {
 		mux.HandleFunc("/dis/force", handleForce(posture, *flagAdminToken))
 		log.Printf("dis: /dis/force admin endpoint enabled")
@@ -380,6 +388,58 @@ func handleAdMode(p *dis.Posture) http.HandlerFunc {
 func mustJSON(v any) []byte {
 	b, _ := json.Marshal(v)
 	return b
+}
+
+// handlePOWChallenge handles GET /dis/pow/challenge — issues a fresh,
+// stateless proof-of-work challenge for the AdModePOWCAPTCHA gate. Called by
+// the WordPress edis-dis plugin's REST proxy (the collector only listens on
+// 127.0.0.1, browsers can't reach it directly), which forwards the response
+// to the client JS solving the puzzle.
+func handlePOWChallenge(iss *dis.POWIssuer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ch, err := iss.Issue(time.Now())
+		if err != nil {
+			http.Error(w, "challenge generation failed", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(ch) //nolint:errcheck
+	}
+}
+
+type powVerifyRequest struct {
+	Token string `json:"token"`
+	Nonce string `json:"nonce"`
+}
+
+// handlePOWVerify handles POST /dis/pow/verify — checks a client-submitted
+// nonce against the token issued by handlePOWChallenge. Stateless: fail
+// closed on a bad/expired/unsolved token (this is the one DIS surface that
+// deliberately does NOT fail open — the whole point of AdModePOWCAPTCHA is
+// that attack-mode traffic has to pay a real cost before it gets served
+// anything).
+func handlePOWVerify(iss *dis.POWIssuer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req powVerifyRequest
+		if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		ok, err := iss.Verify(req.Token, req.Nonce, time.Now())
+		if err != nil || !ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprint(w, `{"ok":false}`)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"ok":true}`)
+	}
 }
 
 // handleForce handles POST /dis/force?state=<state>

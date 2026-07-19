@@ -32,6 +32,31 @@ function edis_dis_boot(): void {
         add_action( 'admin_notices', 'edis_dis_admin_notice' );
         add_action( 'admin_menu', 'edis_dis_admin_menu' );
     }
+    add_action( 'rest_api_init', 'edis_dis_register_rest_routes' );
+    add_action( 'wp_enqueue_scripts', 'edis_dis_maybe_enqueue_pow' );
+}
+
+/**
+ * Only enqueue the PoW solver JS on requests where a challenge slot might
+ * actually render — cheap check (mirrors the ad mode lookup the shortcode
+ * itself does, both hit the same 10s transient so this doesn't double the
+ * collector calls in practice).
+ */
+function edis_dis_maybe_enqueue_pow(): void {
+    if ( edis_dis_ad_mode() !== 'pow_captcha' ) {
+        return;
+    }
+    wp_enqueue_script(
+        'edis-dis-pow',
+        plugins_url( 'assets/pow.js', __FILE__ ),
+        [],
+        '0.1.0',
+        true
+    );
+    wp_localize_script( 'edis-dis-pow', 'edisDisPow', [
+        'restUrl' => esc_url_raw( rest_url( 'edis/v1/' ) ),
+        'nonce'   => wp_create_nonce( 'wp_rest' ),
+    ] );
 }
 
 // ── Health State Query ────────────────────────────────────────────────────────
@@ -94,6 +119,78 @@ function edis_dis_fetch_ad_mode(): string {
     return $mode;
 }
 
+// ── PoW Gate REST Proxy ────────────────────────────────────────────────────────
+//
+// The DIS collector only listens on 127.0.0.1 (never exposed to browsers
+// directly — same reasoning as the health/admode fetches above), so the
+// PoW challenge/verify round trip has to go through WordPress's own REST
+// API as a thin proxy. Both routes require a valid WP nonce (any visitor
+// gets one automatically — this isn't an auth check, just standard
+// same-origin CSRF hygiene for a REST endpoint).
+
+function edis_dis_register_rest_routes(): void {
+    register_rest_route( 'edis/v1', '/dis-pow-challenge', [
+        'methods'             => 'GET',
+        'callback'            => 'edis_dis_rest_pow_challenge',
+        'permission_callback' => '__return_true',
+    ] );
+    register_rest_route( 'edis/v1', '/dis-pow-verify', [
+        'methods'             => 'POST',
+        'callback'            => 'edis_dis_rest_pow_verify',
+        'permission_callback' => '__return_true',
+    ] );
+}
+
+function edis_dis_rest_pow_challenge( \WP_REST_Request $request ) {
+    $resp = wp_remote_get( edis_dis_collector_url() . '/dis/pow/challenge', [
+        'timeout'   => 2,
+        'sslverify' => false,
+    ]);
+    if ( is_wp_error( $resp ) ) {
+        return new \WP_Error( 'dis_unreachable', 'DIS collector unreachable', [ 'status' => 502 ] );
+    }
+    $data = json_decode( wp_remote_retrieve_body( $resp ), true );
+    if ( ! is_array( $data ) || ! isset( $data['token'] ) ) {
+        return new \WP_Error( 'dis_bad_response', 'DIS collector returned an invalid challenge', [ 'status' => 502 ] );
+    }
+    return new \WP_REST_Response( $data, 200 );
+}
+
+function edis_dis_rest_pow_verify( \WP_REST_Request $request ) {
+    $token = (string) $request->get_param( 'token' );
+    $nonce = (string) $request->get_param( 'nonce' );
+    $slot  = sanitize_text_field( (string) $request->get_param( 'slot' ) );
+    $text  = sanitize_text_field( (string) $request->get_param( 'text' ) );
+    $href  = esc_url_raw( (string) $request->get_param( 'href' ) );
+
+    if ( $token === '' || $nonce === '' ) {
+        return new \WP_REST_Response( [ 'ok' => false ], 400 );
+    }
+
+    $resp = wp_remote_post( edis_dis_collector_url() . '/dis/pow/verify', [
+        'timeout'   => 2,
+        'sslverify' => false,
+        'headers'   => [ 'Content-Type' => 'application/json' ],
+        'body'      => wp_json_encode( [ 'token' => $token, 'nonce' => $nonce ] ),
+    ]);
+    if ( is_wp_error( $resp ) ) {
+        // Fail closed here specifically: unlike ad-mode reads, an
+        // unreachable collector during a PoW check must not grant the ad —
+        // the whole point of this gate is that attack-mode traffic has to
+        // pay a verifiable cost, not just claim to have paid it.
+        return new \WP_REST_Response( [ 'ok' => false ], 502 );
+    }
+    $data = json_decode( wp_remote_retrieve_body( $resp ), true );
+    if ( ! is_array( $data ) || empty( $data['ok'] ) ) {
+        return new \WP_REST_Response( [ 'ok' => false ], 403 );
+    }
+
+    return new \WP_REST_Response( [
+        'ok'   => true,
+        'html' => edis_dis_text_ad( [ 'slot' => $slot, 'text' => $text ?: 'EINHORN_INDUSTRIAL — Financial intelligence built different.', 'href' => $href ?: home_url( '/ask' ) ] ),
+    ], 200 );
+}
+
 // ── Ad Mode Shortcode ─────────────────────────────────────────────────────────
 
 /**
@@ -149,15 +246,19 @@ function edis_dis_text_ad( array $atts ): string {
 }
 
 function edis_dis_challenge_ad( array $atts ): string {
-    // PoW stub: a JS challenge that delays bot requests.
-    // Real implementation: server-issued nonce + hashcash-style PoW.
-    $nonce = wp_create_nonce( 'edis_dis_pow_' . $atts['slot'] );
+    // Real hashcash-style PoW gate (internal/dis/pow.go + assets/pow.js):
+    // the client fetches a challenge from the DIS collector (proxied through
+    // the REST routes above), solves it in the browser, and posts the
+    // solution back for verification. Only on a verified solve does the
+    // real ad HTML get served — this div is a placeholder the JS replaces
+    // or removes, never the ad itself.
     return sprintf(
-        '<div class="edis-ad edis-ad--challenge" data-slot="%s" data-nonce="%s">'
-        . '<p class="edis-dis-challenge-msg">Please wait while we verify your browser…</p>'
+        '<div class="edis-ad edis-ad--challenge" data-slot="%s" data-text="%s" data-href="%s">'
+        . '<p class="edis-dis-challenge-msg">Verifying…</p>'
         . '</div>',
         esc_attr( $atts['slot'] ),
-        esc_attr( $nonce )
+        esc_attr( $atts['text'] ),
+        esc_attr( $atts['href'] )
     );
 }
 
