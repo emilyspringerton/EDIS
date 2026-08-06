@@ -1,5 +1,8 @@
 # EDIS Changelog
 
+## 2026-08-06
+- Added GitHub Actions CI: Go job (go build + go test over internal/dis, cmd/dis) and a PHP syntax-check job (php -l across every plugins/ and themes/ file). Found and fixed a real, previously-undetected PHP parse error while writing the lint job: themes/goblindragon/index.php had an unescaped apostrophe in "What's Happening in the City" breaking out of its single-quoted string.
+
 ## 2026-07-19
 - DIS-for-DNS northstar written — real audit found no DNSSEC/CAA/DMARC on okemily.com/farthq.com despite Cloudflare hosting; 4 threat classes scoped (cache poisoning, rogue cert issuance, subdomain takeover, typosquatting) with phased defenses
 
