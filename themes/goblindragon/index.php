@@ -35,7 +35,7 @@ get_header();
 <section class="gfd-section" style="background:var(--gfd-dark);">
     <div class="gfd-container">
         <p class="gfd-section__eyebrow"><?php esc_html_e('Channel 11 — Broadcast', 'goblindragon'); ?></p>
-        <h2 class="gfd-section__title"><?php esc_html_e('What's Happening in the City', 'goblindragon'); ?></h2>
+        <h2 class="gfd-section__title"><?php esc_html_e("What's Happening in the City", 'goblindragon'); ?></h2>
         <div class="gfd-trailer" style="margin-top:32px;">
             <?php
             // If a video URL is set in theme options, embed it; otherwise show placeholder.

@@ -1,0 +1,56 @@
+name: EDIS CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: edis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go_dis:
+    name: Go — Digital Immune System (internal/dis, cmd/dis)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: go build
+        run: go build ./...
+      - name: go test
+        run: go test ./...
+
+  php_lint:
+    name: PHP syntax check — plugins/ + themes/
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # No PHPUnit suite exists yet (see CLAUDE.md's "Testing" section — it
+    # documents the intended per-plugin composer/phpunit setup, not
+    # something built here). This job is a real, if narrower, gate: every
+    # .php file must at least parse, which is exactly the class of bug
+    # (an unescaped apostrophe breaking a string literal) found and fixed
+    # in themes/goblindragon/index.php while writing this workflow.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+      - name: php -l across every plugin/theme file
+        run: |
+          set -euo pipefail
+          status=0
+          while IFS= read -r f; do
+            if ! php -l "$f" >/tmp/lint-out 2>&1; then
+              echo "::error file=$f::$(cat /tmp/lint-out)"
+              status=1
+            fi
+          done < <(find plugins themes -iname "*.php")
+          exit "$status"
