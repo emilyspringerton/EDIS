@@ -75,9 +75,9 @@ function edis_get_earnings_calendar( string $ticker = '', string $to = '', int $
     return EDIS_Core_Cache::remember( $key, fn() => edis_api()->get_earnings_calendar( $ticker, '', $to, $limit ), 300 );
 }
 
-function edis_get_press_releases( string $ticker, int $limit = 20 ): array|WP_Error {
-    $key = "press/{$ticker}/{$limit}";
-    return EDIS_Core_Cache::remember( $key, fn() => edis_api()->get_press_releases( $ticker, $limit ), 120 );
+function edis_get_press_releases( string $ticker, int $limit = 20, string $provider = '' ): array|WP_Error {
+    $key = "press/{$ticker}/{$limit}/{$provider}";
+    return EDIS_Core_Cache::remember( $key, fn() => edis_api()->get_press_releases( $ticker, $limit, $provider ), 120 );
 }
 
 function edis_get_related_entities( string $ticker ): array|WP_Error {

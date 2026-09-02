@@ -88,13 +88,20 @@ function edis_eps_shortcode( array $atts ): string {
 
 add_shortcode( 'edis_press_releases', 'edis_press_releases_shortcode' );
 function edis_press_releases_shortcode( array $atts ): string {
-    $atts   = shortcode_atts( [ 'ticker' => '', 'limit' => '10' ], $atts );
-    $ticker = strtoupper( sanitize_text_field( $atts['ticker'] ) );
-    $limit  = max( 1, min( 50, (int) $atts['limit'] ) );
+    // 'provider' added 2026-09-02 (founder real-time: "add businesswire prs
+    // to our data sources same as prnewswire... individual businesswire and
+    // prnewswire as options for prtype... we need to get the press releases
+    // set up on the EDIS wordpress site - there we can prove that there can
+    // be pressreleases type and then sub types"). Empty means every
+    // provider, same as omitting the query param on signalapi's own side.
+    $atts     = shortcode_atts( [ 'ticker' => '', 'limit' => '10', 'provider' => '' ], $atts );
+    $ticker   = strtoupper( sanitize_text_field( $atts['ticker'] ) );
+    $limit    = max( 1, min( 50, (int) $atts['limit'] ) );
+    $provider = sanitize_key( $atts['provider'] );
     if ( empty( $ticker ) ) {
         return '<p class="edis-error">edis_press_releases: ticker attribute required.</p>';
     }
-    $data = edis_get_press_releases( $ticker, $limit );
+    $data = edis_get_press_releases( $ticker, $limit, $provider );
     if ( is_wp_error( $data ) ) {
         return '<p class="edis-error">' . esc_html( $data->get_error_message() ) . '</p>';
     }

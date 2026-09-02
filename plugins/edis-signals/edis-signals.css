@@ -24,6 +24,28 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Provider badge (prtype sub-type: prnewswire/businesswire), added 2026-09-02. */
+.edis-pr__provider {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    vertical-align: middle;
+}
+.edis-pr__provider--businesswire {
+    background: #fef3c7;
+    color: #92400e;
+}
+.edis-pr__provider--prnewswire {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
 .edis-pr__title {
     margin: 0 0 0.3rem;
     font-size: 0.9rem;

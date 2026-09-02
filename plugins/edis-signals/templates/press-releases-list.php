@@ -18,11 +18,21 @@ endif;
         $snippet_short = $snippet ? ( mb_strlen( $snippet ) > 240 ? mb_substr( $snippet, 0, 240 ) . '…' : $snippet ) : '';
         $first_line  = $snippet ? strtok( $snippet, "\n" ) : '';
         $title       = $first_line ? ( mb_strlen( $first_line ) > 120 ? mb_substr( $first_line, 0, 120 ) . '…' : $first_line ) : 'Press Release';
+        // Provider badge (prtype sub-type within the pressreleases content
+        // type -- "prnewswire"/"businesswire"). Added 2026-09-02, same
+        // founder direction as the shortcode's own new 'provider' attribute
+        // above -- this is the proof-on-WordPress half of that ask: a
+        // content type ("Press Release") with a real, visible sub-type.
+        $provider       = isset( $pr['provider'] ) ? sanitize_key( $pr['provider'] ) : '';
+        $provider_label = [ 'prnewswire' => 'PR Newswire', 'businesswire' => 'Business Wire' ][ $provider ] ?? ( $provider ? ucwords( str_replace( '_', ' ', $provider ) ) : '' );
     ?>
     <div class="edis-pr">
         <div class="edis-pr__meta">
             <?php if ( $display_date ) : ?>
                 <span class="edis-pr__date"><?php echo $display_date; ?></span>
+            <?php endif; ?>
+            <?php if ( $provider_label ) : ?>
+                <span class="edis-pr__provider edis-pr__provider--<?php echo esc_attr( $provider ); ?>"><?php echo esc_html( $provider_label ); ?></span>
             <?php endif; ?>
         </div>
         <p class="edis-pr__title">

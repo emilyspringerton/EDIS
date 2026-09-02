@@ -104,11 +104,22 @@ class EDIS_Core_API_Client {
      * @param int    $limit   max results (default 20)
      * @return array|WP_Error  { ticker: string, count: int, press_releases: PressRelease[] }
      */
-    public function get_press_releases( string $ticker, int $limit = 20 ) {
+    /**
+     * @param string $provider Optional wire-service filter -- "prnewswire",
+     *   "businesswire", or '' for all. Mirrors signalapi's own
+     *   /v1/press-releases/{ticker}?provider= query param (added 2026-09-02,
+     *   founder real-time: "individual businesswire and prnewswire as
+     *   options for prtype").
+     */
+    public function get_press_releases( string $ticker, int $limit = 20, string $provider = '' ) {
         if ( empty( $this->signalapi_url ) ) {
             return new WP_Error( 'edis_not_configured', '[EDIS] signalapi URL not set' );
         }
-        return $this->get( '/v1/press-releases/' . strtoupper( $ticker ), [ 'limit' => $limit ] );
+        $params = [ 'limit' => $limit ];
+        if ( $provider !== '' ) {
+            $params['provider'] = $provider;
+        }
+        return $this->get( '/v1/press-releases/' . strtoupper( $ticker ), $params );
     }
 
     /**

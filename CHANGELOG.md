@@ -1,5 +1,8 @@
 # EDIS Changelog
 
+## 2026-09-02
+- `edis_press_releases` shortcode/template now surface the press-release provider/subtype (PRNewswire/Business Wire), proving out signalapi's new `SourceProvider`/`?provider=` field on the "WordPress as consumer, not source of truth" side. New `provider` shortcode attribute (`[edis_press_releases ticker=X provider=businesswire]`) threads through `edis_get_press_releases()` -> `EDIS_Core_API_Client::get_press_releases()` -> signalapi's `?provider=` query param. Template renders a small color-coded provider badge next to the date. `php -l` clean on every touched file. See PRRJECT_FATBABY's own CHANGELOG/`docs/CONTENT_TYPE_TAXONOMY.md` for the backend half. (sess-20260830-1207-cc0ba7da)
+
 ## 2026-08-06
 - Added GitHub Actions CI: Go job (go build + go test over internal/dis, cmd/dis) and a PHP syntax-check job (php -l across every plugins/ and themes/ file). Found and fixed a real, previously-undetected PHP parse error while writing the lint job: themes/goblindragon/index.php had an unescaped apostrophe in "What's Happening in the City" breaking out of its single-quoted string.
 
