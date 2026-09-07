@@ -191,13 +191,99 @@ function edis_dis_rest_pow_verify( \WP_REST_Request $request ) {
     ], 200 );
 }
 
+// ── Ad Inventory (CP-ADMON-1) ─────────────────────────────────────────────────
+//
+// Founder real-time, 2026-09-07: internal-ecosystem-first advertising, mixed
+// with a real "would you like to advertise here?" house CTA in the SAME
+// rotation ("mixed with other stuff as we have stuff to advertise") --
+// not a fallback-only-when-empty message, one more real entry in the pool.
+// Vetted external sponsors (e.g. "we would take a Redbull sponsorship") are
+// a real, supported `kind` here too -- we don't share any of our own user
+// data with them, only serve a static creative + outbound link, and default
+// external links to `rel="noreferrer"` so the click doesn't even leak which
+// page it came from (stronger than the internet's own default of a plain
+// `Referer` header leak, which we've acknowledged plainly is otherwise
+// unavoidable for a normal outbound link).
+//
+// This is real, current inventory -- GFD is live and shipped
+// (dis-gfd-subscription is this exact repo's own real cross-product
+// precedent). No placeholder ad for a product that isn't live yet
+// (WOTAN/BrawlPit/Emily+/IDUNA_PRO): that's a promise we can't keep,
+// not a real ad. Add real entries here (or via the
+// `edis_dis_ad_pool` filter, e.g. from another plugin) as products ship or
+// sponsors are vetted -- never hardcode a specific ad's content into a
+// shortcode call in a template; that's exactly the per-placement drift this
+// pool replaces.
+function edis_dis_default_ad_pool(): array {
+    return [
+        [
+            'kind' => 'house',
+            'text' => 'GoblinFoxDragon — the long-running RPG. Play free.',
+            'href' => 'https://goblinfoxdragon.com',
+            'src'  => '',
+        ],
+        [
+            'kind' => 'meta',
+            'text' => 'Advertise here — reach FatBaby\'s markets-desk readers.',
+            'href' => edis_dis_advertise_contact(),
+            'src'  => '',
+        ],
+    ];
+}
+
+/**
+ * The real destination for "would you like to advertise?" -- a plain
+ * mailto: by default (no contact-form backend exists for FatBaby yet, and a
+ * dead link would be worse than an honest mailto:), admin-editable on the
+ * DIS settings page since the real inbox to use is an operational decision,
+ * not a code one.
+ */
+function edis_dis_advertise_contact(): string {
+    $configured = get_option( 'edis_dis_advertise_contact', '' );
+    if ( $configured ) {
+        return $configured;
+    }
+    $host = wp_parse_url( home_url(), PHP_URL_HOST ) ?: 'fatbaby.news';
+    return 'mailto:ads@' . $host;
+}
+
+/**
+ * Returns the real ad pool for a slot -- `edis_dis_default_ad_pool()`
+ * filtered by `edis_dis_ad_pool` (pass `$slot` to target one slot
+ * specifically; the default filter callback ignores it and returns the same
+ * pool everywhere, which is the correct behavior until slot-specific
+ * inventory is actually needed).
+ */
+function edis_dis_ad_pool( string $slot ): array {
+    return apply_filters( 'edis_dis_ad_pool', edis_dis_default_ad_pool(), $slot );
+}
+
+/**
+ * Picks one real entry from the slot's ad pool at random. Empty array (not
+ * a guess, not a placeholder ad) if the pool is empty -- callers must
+ * handle that by rendering nothing, same "no ad slots suppressed" spirit as
+ * the `none` health-driven ad mode below.
+ */
+function edis_dis_pick_ad( string $slot ): array {
+    $pool = edis_dis_ad_pool( $slot );
+    if ( empty( $pool ) ) {
+        return [];
+    }
+    return $pool[ array_rand( $pool ) ];
+}
+
 // ── Ad Mode Shortcode ─────────────────────────────────────────────────────────
 
 /**
  * [edis_dis_ad] — renders an ad slot adjusted to the current health state.
- * Attributes: slot (string), src (URL for SVG/image ad).
+ * Attributes: slot (string). src/text/href are optional EXPLICIT overrides
+ * for a one-off placement (back-compat with any hand-authored ad); when
+ * omitted (the normal case), the real creative is picked at random from
+ * edis_dis_ad_pool() for that slot -- house ads, the "advertise with us"
+ * CTA, and any vetted sponsor, all mixed in the same rotation.
  *
- * Usage: [edis_dis_ad slot="sidebar" src="https://ads.example.com/728x90.svg"]
+ * Usage: [edis_dis_ad slot="sidebar"]
+ *        [edis_dis_ad slot="sidebar" src="https://ads.example.com/728x90.svg" href="https://example.com" text="..."]  (explicit override)
  */
 add_shortcode( 'edis_dis_ad', 'edis_dis_ad_shortcode' );
 
@@ -205,9 +291,23 @@ function edis_dis_ad_shortcode( array $atts ): string {
     $atts = shortcode_atts( [
         'slot' => 'default',
         'src'  => '',
-        'text' => 'EINHORN_INDUSTRIAL — Financial intelligence built different.',
-        'href' => home_url( '/ask' ),
+        'text' => '',
+        'href' => '',
+        'kind' => '',
     ], $atts );
+
+    // Explicit override: any of src/text/href passed means "render exactly
+    // this," the original behavior, untouched.
+    if ( $atts['text'] || $atts['href'] || $atts['src'] ) {
+        if ( ! $atts['text'] ) $atts['text'] = 'EINHORN_INDUSTRIAL — Financial intelligence built different.';
+        if ( ! $atts['href'] ) $atts['href'] = home_url( '/ask' );
+    } else {
+        $picked = edis_dis_pick_ad( $atts['slot'] );
+        if ( empty( $picked ) ) {
+            return ''; // real, empty pool -- render nothing, don't guess.
+        }
+        $atts = array_merge( $atts, $picked );
+    }
 
     $mode = edis_dis_ad_mode();
 
@@ -215,9 +315,10 @@ function edis_dis_ad_shortcode( array $atts ): string {
         case 'svg':
             if ( $atts['src'] ) {
                 return sprintf(
-                    '<div class="edis-ad edis-ad--svg" data-slot="%s"><a href="%s" rel="nofollow"><img src="%s" loading="lazy" alt="Advertisement" /></a></div>',
+                    '<div class="edis-ad edis-ad--svg" data-slot="%s"><a href="%s" rel="%s"><img src="%s" loading="lazy" alt="Advertisement" /></a></div>',
                     esc_attr( $atts['slot'] ),
                     esc_url( $atts['href'] ),
+                    esc_attr( edis_dis_ad_rel( $atts['kind'] ) ),
                     esc_url( $atts['src'] )
                 );
             }
@@ -236,11 +337,24 @@ function edis_dis_ad_shortcode( array $atts ): string {
     }
 }
 
+/**
+ * rel attribute per ad kind -- CP-ADMON-1's own real privacy stance:
+ * "sponsor" (a vetted external advertiser) gets noreferrer+noopener on top
+ * of the existing nofollow, so the click doesn't even leak which FatBaby
+ * page it came from. "house"/"meta" (our own products, our own contact
+ * address) stay nofollow-only -- there's no privacy boundary being crossed
+ * pointing at our own ecosystem or our own inbox.
+ */
+function edis_dis_ad_rel( string $kind ): string {
+    return $kind === 'sponsor' ? 'nofollow noreferrer noopener' : 'nofollow';
+}
+
 function edis_dis_text_ad( array $atts ): string {
     return sprintf(
-        '<div class="edis-ad edis-ad--text" data-slot="%s"><a href="%s" rel="nofollow">%s</a></div>',
+        '<div class="edis-ad edis-ad--text" data-slot="%s"><a href="%s" rel="%s">%s</a></div>',
         esc_attr( $atts['slot'] ),
         esc_url( $atts['href'] ),
+        esc_attr( edis_dis_ad_rel( $atts['kind'] ?? '' ) ),
         esc_html( $atts['text'] )
     );
 }
@@ -304,6 +418,7 @@ function edis_dis_admin_page(): void {
     if ( isset( $_POST['edis_dis_save'] ) && check_admin_referer( 'edis_dis_settings' ) ) {
         update_option( 'edis_dis_collector_url', sanitize_url( $_POST['edis_dis_collector_url'] ?? '' ) );
         update_option( 'edis_dis_admin_token', sanitize_text_field( $_POST['edis_dis_admin_token'] ?? '' ) );
+        update_option( 'edis_dis_advertise_contact', sanitize_text_field( $_POST['edis_dis_advertise_contact'] ?? '' ) );
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
 
@@ -371,6 +486,15 @@ function edis_dis_admin_page(): void {
                         <p class="description">Bearer token passed to <code>/dis/force</code>. Must match the <code>--admin-token</code> flag on the <code>dis</code> binary. Required for manual override.</p>
                     </td>
                 </tr>
+                <tr>
+                    <th>Advertise Contact</th>
+                    <td>
+                        <input type="text" name="edis_dis_advertise_contact"
+                            value="<?php echo esc_attr( get_option( 'edis_dis_advertise_contact', '' ) ); ?>"
+                            class="regular-text" placeholder="mailto:ads@yourdomain.com" />
+                        <p class="description">Where the "Advertise here" house ad links -- a real, checked inbox, not a placeholder. Defaults to <code>mailto:ads@&lt;this site's own domain&gt;</code> if left blank.</p>
+                    </td>
+                </tr>
             </table>
             <p class="submit"><input type="submit" name="edis_dis_save" class="button-primary" value="Save Settings" /></p>
         </form>
@@ -394,8 +518,10 @@ function edis_dis_admin_page(): void {
         <?php endif; ?>
 
         <h2>Shortcode</h2>
-        <pre>[edis_dis_ad slot="sidebar" src="https://ads.example.com/banner.svg" href="https://example.com"]</pre>
-        <p>The ad output adapts automatically to the current health state: SVG → text → PoW/CAPTCHA → nothing.</p>
+        <pre>[edis_dis_ad slot="sidebar"]</pre>
+        <p>Renders one real entry (house ad, "advertise here" CTA, or a vetted sponsor) picked at random from the ad pool, adapted automatically to the current health state: SVG → text → PoW/CAPTCHA → nothing. Add a real sponsor via the <code>edis_dis_ad_pool</code> filter -- see <code>internal/gauntlet</code>'s own sibling doc, <code>docs/AD_MONETIZATION_NORTHSTAR.md</code>, for the full policy.</p>
+        <pre>[edis_dis_ad slot="sidebar" src="..." href="..." text="..."]</pre>
+        <p>Explicit override for a one-off placement, unchanged from before -- bypasses the pool entirely.</p>
 
         <h2>Health States</h2>
         <table class="widefat" style="max-width:600px;">
